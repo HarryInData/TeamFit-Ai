@@ -11,7 +11,7 @@ from middleware.auth import create_token
 auth_bp = Blueprint("auth", __name__)
 
 
-@auth_bp.route("/auth/login", methods=["POST"])
+@auth_bp.route("/api/auth/login", methods=["POST"])
 def login():
     """Authenticate user and return JWT token."""
     data = request.get_json()
@@ -45,7 +45,7 @@ def login():
     })
 
 
-@auth_bp.route("/auth/register", methods=["POST"])
+@auth_bp.route("/api/auth/register", methods=["POST"])
 def register():
     """Register a new user and return JWT token."""
     data = request.get_json()
