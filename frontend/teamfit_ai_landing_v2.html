@@ -1,0 +1,451 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#0b0c14;
+  --ink2:#111220;
+  --surface:rgba(255,255,255,.04);
+  --border:rgba(255,255,255,.07);
+  --border2:rgba(255,255,255,.12);
+  --text:#f0eeff;
+  --muted:#7a7a9a;
+  --accent1:#c084fc;
+  --accent2:#f472b6;
+  --accent3:#38bdf8;
+  --green:#34d399;
+}
+html{scroll-behavior:smooth}
+body{background:var(--ink);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;cursor:none}
+
+/* Custom cursor */
+#cursor{position:fixed;width:10px;height:10px;border-radius:50%;background:var(--accent1);pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s,background .2s;mix-blend-mode:screen}
+#cursor-ring{position:fixed;width:36px;height:36px;border-radius:50%;border:1px solid rgba(192,132,252,.4);pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform .08s,width .3s,height .3s,opacity .3s}
+
+/* Canvas */
+#bg-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+
+/* Nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:18px 40px;border-bottom:1px solid var(--border);background:rgba(11,12,20,.7);backdrop-filter:blur(20px)}
+.nav-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;letter-spacing:-.02em;color:var(--text)}
+.nav-logo em{font-style:normal;color:var(--accent1)}
+.nav-links{display:flex;gap:32px}
+.nav-links a{font-size:13px;color:var(--muted);text-decoration:none;letter-spacing:.02em;transition:color .2s}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{display:flex;gap:10px}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--muted);padding:8px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:none;transition:all .2s}
+.btn-outline:hover{border-color:var(--accent1);color:var(--accent1)}
+.btn-glow{background:var(--accent1);border:none;color:#0b0c14;padding:8px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:none;transition:all .2s;position:relative;overflow:hidden}
+.btn-glow::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.2),transparent);opacity:0;transition:opacity .2s}
+.btn-glow:hover{transform:translateY(-1px);box-shadow:0 0 24px rgba(192,132,252,.5)}
+.btn-glow:hover::after{opacity:1}
+
+/* Hero */
+.hero{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;padding:120px 40px 80px}
+.hero-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;width:100%}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(192,132,252,.08);border:1px solid rgba(192,132,252,.2);border-radius:999px;padding:5px 14px 5px 8px;font-size:12px;color:var(--accent1);margin-bottom:24px;letter-spacing:.03em}
+.badge-dot{width:20px;height:20px;border-radius:50%;background:rgba(192,132,252,.15);display:flex;align-items:center;justify-content:center}
+.badge-pulse{width:7px;height:7px;border-radius:50%;background:var(--accent1);animation:blink 1.4s ease infinite}
+@keyframes blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
+h1{font-family:'Syne',sans-serif;font-size:clamp(38px,5.5vw,64px);font-weight:800;line-height:1.05;letter-spacing:-.03em;color:var(--text)}
+.h1-line2{display:block;background:linear-gradient(120deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:16px;color:var(--muted);line-height:1.75;max-width:440px;margin-top:20px}
+.hero-actions{display:flex;gap:12px;margin-top:36px;flex-wrap:wrap}
+.hero-btn-main{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--accent1),var(--accent2));color:#fff;border:none;border-radius:10px;padding:13px 26px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:none;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden}
+.hero-btn-main:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(192,132,252,.4)}
+.hero-btn-main::before{content:'';position:absolute;top:-50%;left:-60%;width:40%;height:200%;background:rgba(255,255,255,.15);transform:skewX(-20deg);transition:left .4s}
+.hero-btn-main:hover::before{left:130%}
+.hero-btn-ghost{display:inline-flex;align-items:center;gap:10px;background:var(--surface);color:var(--muted);border:1px solid var(--border2);border-radius:10px;padding:13px 26px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:none;transition:all .2s}
+.hero-btn-ghost:hover{color:var(--text);border-color:var(--border2)}
+.hero-tags{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap}
+.htag{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:3px 10px;letter-spacing:.03em}
+
+/* Editor mockup */
+.editor-wrap{position:relative}
+.editor-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;animation:floatY 5s ease-in-out infinite}
+@keyframes floatY{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-10px) rotate(.3deg)}}
+.editor-topbar{display:flex;align-items:center;gap:6px;padding:12px 16px;background:rgba(0,0,0,.3);border-bottom:1px solid rgba(255,255,255,.06)}
+.tbar-dot{width:10px;height:10px;border-radius:50%}
+.editor-tab{margin-left:12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);background:rgba(255,255,255,.04);padding:3px 12px;border-radius:4px;border:1px solid rgba(255,255,255,.06)}
+.live-badge{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--green);font-family:'JetBrains Mono',monospace}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1s ease infinite}
+.code-body{padding:18px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.8}
+.ln{color:rgba(255,255,255,.15);user-select:none;margin-right:16px;min-width:14px;display:inline-block}
+.kw{color:var(--accent1)}
+.fn{color:#60a5fa}
+.str{color:var(--green)}
+.cm{color:rgba(255,255,255,.25)}
+.cursor-blink{display:inline-block;width:2px;height:14px;background:var(--accent1);vertical-align:middle;animation:blink .9s step-end infinite;margin-left:1px}
+.contrib-panel{padding:16px;border-top:1px solid rgba(255,255,255,.06)}
+.cp-label{font-size:10px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:12px;font-family:'DM Sans',sans-serif}
+.contrib-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.contrib-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#fff;flex-shrink:0}
+.contrib-name{font-size:12px;color:var(--text);min-width:60px;font-family:'DM Sans',sans-serif}
+.contrib-bar-wrap{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+.contrib-bar{height:100%;border-radius:999px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+.contrib-pct{font-size:11px;font-family:'JetBrains Mono',monospace;min-width:32px;text-align:right}
+.metrics-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid rgba(255,255,255,.06)}
+.metric-box{flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px;text-align:center}
+.metric-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent1)}
+.metric-lbl{font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+
+/* Floating tag */
+.float-tag{position:absolute;background:rgba(11,12,20,.9);border:1px solid rgba(192,132,252,.25);border-radius:10px;padding:8px 14px;font-size:12px;backdrop-filter:blur(12px);animation:floatTag 6s ease-in-out infinite}
+.ft1{top:-20px;right:-20px;animation-delay:0s;color:var(--green)}
+.ft2{bottom:30px;left:-30px;animation-delay:2s;color:var(--accent2)}
+@keyframes floatTag{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+/* Trust bar */
+.trust{position:relative;z-index:1;border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:20px 40px;overflow:hidden}
+.trust-scroll{display:flex;gap:0;animation:scrollX 18s linear infinite;width:max-content}
+.trust-scroll:hover{animation-play-state:paused}
+@keyframes scrollX{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.trust-item{display:flex;align-items:center;gap:10px;padding:0 36px;white-space:nowrap;font-size:13px;color:var(--muted);border-right:1px solid var(--border)}
+.trust-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* Features */
+.features{position:relative;z-index:1;padding:96px 40px}
+.section-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent1);font-weight:600;margin-bottom:12px;font-family:'DM Sans',sans-serif}
+.section-heading{font-family:'Syne',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:800;letter-spacing:-.03em;line-height:1.1;color:var(--text)}
+.features-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-top:56px}
+.feat-card{background:var(--ink);padding:36px;transition:background .3s;position:relative;overflow:hidden}
+.feat-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 0% 0%,rgba(192,132,252,.06) 0%,transparent 60%);opacity:0;transition:opacity .3s}
+.feat-card:hover{background:var(--ink2)}
+.feat-card:hover::before{opacity:1}
+.feat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:20px;border:1px solid var(--border)}
+.feat-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text);margin-bottom:10px;letter-spacing:-.01em}
+.feat-desc{font-size:13px;color:var(--muted);line-height:1.7}
+.feat-tags{display:flex;gap:6px;margin-top:16px;flex-wrap:wrap}
+.ftag{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:2px 8px;font-family:'JetBrains Mono',monospace}
+
+/* How it works */
+.how{position:relative;z-index:1;padding:96px 40px;background:rgba(255,255,255,.015)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:32px;margin-top:56px;max-width:900px;margin-left:auto;margin-right:auto}
+.step{position:relative;padding-left:0}
+.step-num{font-family:'Syne',sans-serif;font-size:56px;font-weight:800;color:rgba(192,132,252,.08);line-height:1;margin-bottom:4px;letter-spacing:-.04em}
+.step-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px}
+.step-desc{font-size:13px;color:var(--muted);line-height:1.7}
+.step-connector{position:absolute;top:28px;right:-16px;width:32px;height:1px;background:linear-gradient(to right,var(--border2),transparent)}
+
+/* CTA */
+.cta-section{position:relative;z-index:1;padding:96px 40px;text-align:center;overflow:hidden}
+.cta-glow{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(192,132,252,.12) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.cta-heading{font-family:'Syne',sans-serif;font-size:clamp(30px,5vw,52px);font-weight:800;letter-spacing:-.03em;line-height:1.1;max-width:640px;margin:0 auto 16px}
+.cta-sub{font-size:15px;color:var(--muted);max-width:420px;margin:0 auto 36px;line-height:1.7}
+.demo-cards{display:flex;justify-content:center;gap:16px;margin-top:20px;flex-wrap:wrap}
+.demo-card{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:18px 28px;display:flex;align-items:center;gap:14px;cursor:none;transition:all .25s;min-width:200px}
+.demo-card:hover{border-color:var(--accent1);background:rgba(192,132,252,.06);transform:translateY(-2px)}
+.demo-card-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.demo-card-label{font-size:12px;color:var(--muted);margin-bottom:2px}
+.demo-card-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--text)}
+
+/* Footer */
+footer{position:relative;z-index:1;padding:28px 40px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:gap;gap:12px}
+.footer-logo{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--text)}
+.footer-logo em{font-style:normal;color:var(--accent1)}
+.footer-text{font-size:12px;color:var(--muted)}
+
+/* Scroll reveal */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+<canvas id="bg-canvas"></canvas>
+
+<nav>
+  <div class="nav-logo">Team<em>Fit</em> AI</div>
+  <div class="nav-links">
+    <a href="#">Features</a>
+    <a href="#">How it works</a>
+    <a href="#">For educators</a>
+  </div>
+  <div class="nav-cta">
+    <button class="btn-outline">Log in</button>
+    <button class="btn-glow">Get started free</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="reveal">
+      <div class="hero-badge">
+        <div class="badge-dot"><div class="badge-pulse"></div></div>
+        Beta — free for educators
+      </div>
+      <h1>Stop rewarding<br><em class="h1-line2">free riders.</em></h1>
+      <p class="hero-sub">AI-powered contribution tracking for group coding assignments. Know exactly who wrote what — automatically, silently, fairly.</p>
+      <div class="hero-actions">
+        <button class="hero-btn-main">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          See it live
+        </button>
+        <button class="hero-btn-ghost">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Watch 2-min demo
+        </button>
+      </div>
+      <div class="hero-tags">
+        <span class="htag">FERPA-safe</span>
+        <span class="htag">No student install</span>
+        <span class="htag">Judge0 sandboxed</span>
+        <span class="htag">JWT auth</span>
+      </div>
+    </div>
+
+    <div class="editor-wrap reveal" style="transition-delay:.2s">
+      <div class="float-tag ft1">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><polyline points="20 6 9 17 4 12"/></svg>
+        Session active
+      </div>
+      <div class="float-tag ft2">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        AI scoring...
+      </div>
+      <div class="editor-card">
+        <div class="editor-topbar">
+          <div class="tbar-dot" style="background:#ff5f57"></div>
+          <div class="tbar-dot" style="background:#febc2e"></div>
+          <div class="tbar-dot" style="background:#28c840"></div>
+          <div class="editor-tab">group_project.py</div>
+          <div class="live-badge"><div class="live-dot"></div>3 coding</div>
+        </div>
+        <div class="code-body">
+          <div><span class="ln">1</span><span class="cm"># TeamFit AI — Session 42</span></div>
+          <div><span class="ln">2</span></div>
+          <div><span class="ln">3</span><span class="kw">def </span><span class="fn">merge_sort</span>(arr):</div>
+          <div><span class="ln">4</span>&nbsp;&nbsp;<span class="kw">if </span>len(arr) &lt;= 1:</div>
+          <div><span class="ln">5</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">return </span>arr</div>
+          <div><span class="ln">6</span>&nbsp;&nbsp;mid = len(arr) // 2</div>
+          <div><span class="ln">7</span>&nbsp;&nbsp;left&nbsp; = merge_sort(arr[:mid])</div>
+          <div><span class="ln">8</span>&nbsp;&nbsp;right = merge_sort(arr[mid:])</div>
+          <div><span class="ln">9</span>&nbsp;&nbsp;<span class="kw">return </span><span class="fn">merge</span>(left, right)<span class="cursor-blink"></span></div>
+        </div>
+        <div class="contrib-panel">
+          <div class="cp-label">Live contribution</div>
+          <div class="contrib-row">
+            <div class="contrib-avatar" style="background:rgba(192,132,252,.3);color:var(--accent1)">AS</div>
+            <div class="contrib-name" style="font-size:12px">Aanya S.</div>
+            <div class="contrib-bar-wrap"><div class="contrib-bar" id="bar1" style="width:0%;background:linear-gradient(to right,#9333ea,#c084fc)"></div></div>
+            <div class="contrib-pct" style="color:var(--accent1)" id="pct1">0%</div>
+          </div>
+          <div class="contrib-row">
+            <div class="contrib-avatar" style="background:rgba(244,114,182,.25);color:var(--accent2)">RM</div>
+            <div class="contrib-name" style="font-size:12px">Rohan M.</div>
+            <div class="contrib-bar-wrap"><div class="contrib-bar" id="bar2" style="width:0%;background:linear-gradient(to right,#be185d,#f472b6)"></div></div>
+            <div class="contrib-pct" style="color:var(--accent2)" id="pct2">0%</div>
+          </div>
+          <div class="contrib-row">
+            <div class="contrib-avatar" style="background:rgba(52,211,153,.2);color:var(--green)">ZK</div>
+            <div class="contrib-name" style="font-size:12px">Zaid K.</div>
+            <div class="contrib-bar-wrap"><div class="contrib-bar" id="bar3" style="width:0%;background:linear-gradient(to right,#059669,#34d399)"></div></div>
+            <div class="contrib-pct" style="color:var(--green)" id="pct3">0%</div>
+          </div>
+        </div>
+        <div class="metrics-row">
+          <div class="metric-box"><div class="metric-val" id="mks">0</div><div class="metric-lbl">Keystrokes</div></div>
+          <div class="metric-box"><div class="metric-val" id="mat">0m</div><div class="metric-lbl">Active time</div></div>
+          <div class="metric-box"><div class="metric-val" id="msc">—</div><div class="metric-lbl">AI score</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="trust">
+  <div class="trust-scroll" id="trust-scroll">
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(192,132,252,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>Real-time tracking</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(244,114,182,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>AI-powered scoring</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(52,211,153,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>Monaco live editor</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(56,189,248,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>Professor dashboard</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(251,191,36,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>Judge0 sandboxed</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(192,132,252,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>JWT role-based auth</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(244,114,182,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>Fair team evaluation</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(52,211,153,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>FERPA-compliant</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(192,132,252,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>Real-time tracking</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(244,114,182,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>AI-powered scoring</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(52,211,153,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>Monaco live editor</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(56,189,248,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>Professor dashboard</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(251,191,36,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>Judge0 sandboxed</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(192,132,252,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>JWT role-based auth</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(244,114,182,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>Fair team evaluation</div>
+    <div class="trust-item"><div class="trust-icon" style="background:rgba(52,211,153,.1)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>FERPA-compliant</div>
+  </div>
+</div>
+
+<section class="features">
+  <div style="text-align:center;margin-bottom:0" class="reveal">
+    <div class="section-eyebrow">Features</div>
+    <h2 class="section-heading">Built to catch what grades can't</h2>
+    <p style="font-size:15px;color:var(--muted);margin-top:14px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.7">Everything a professor needs to know who did the work — without asking students to self-report.</p>
+  </div>
+  <div class="features-grid reveal" style="transition-delay:.15s">
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(192,132,252,.08);border-color:rgba(192,132,252,.15)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div class="feat-title">Real-time contribution tracking</div>
+      <p class="feat-desc">Silently captures keystrokes, active window focus, and coding time per student — zero UI friction, maximum signal fidelity.</p>
+      <div class="feat-tags"><span class="ftag">keystrokes</span><span class="ftag">focus windows</span><span class="ftag">active time</span></div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(244,114,182,.08);border-color:rgba(244,114,182,.15)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="feat-title">AI-generated fair scores</div>
+      <p class="feat-desc">Raw metrics transformed into readable 0–100 contribution scores with qualitative AI summaries for each student — ready to paste into a grade sheet.</p>
+      <div class="feat-tags"><span class="ftag">0–100 score</span><span class="ftag">AI narrative</span></div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.15)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </div>
+      <div class="feat-title">Monaco live collaboration</div>
+      <p class="feat-desc">Teams code together in a VS Code-grade Monaco editor, synchronized in real time. No lag, no merge conflicts, no one sitting idle undetected.</p>
+      <div class="feat-tags"><span class="ftag">real-time sync</span><span class="ftag">Python · JS · Java</span></div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon" style="background:rgba(56,189,248,.08);border-color:rgba(56,189,248,.15)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+      <div class="feat-title">Professor analytics dashboard</div>
+      <p class="feat-desc">A single dashboard with every student's effort score, activity timeline, and AI narrative. Filter, compare, and export — from session end to grade in under 2 minutes.</p>
+      <div class="feat-tags"><span class="ftag">per-student view</span><span class="ftag">exportable</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="how">
+  <div style="text-align:center" class="reveal">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="section-heading">Three steps. Zero guesswork.</h2>
+  </div>
+  <div class="steps reveal" style="transition-delay:.1s">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-title">Students join the room</div>
+      <p class="step-desc">A session code gets everyone into a shared workspace — JWT-secured, role-separated, no browser extension required.</p>
+      <div class="step-connector"></div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-title">Code together, tracked silently</div>
+      <p class="step-desc">Teams write and run code in the Monaco editor. TeamFit AI logs contributions in the background — students see nothing different.</p>
+      <div class="step-connector"></div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-title">Professor gets the report</div>
+      <p class="step-desc">Session ends → AI synthesizes data → professor receives a per-student score, summary, and full activity breakdown. Grade with confidence.</p>
+    </div>
+  </div>
+</section>
+
+<div class="cta-section">
+  <div class="cta-glow"></div>
+  <div class="reveal">
+    <div class="section-eyebrow" style="margin-bottom:16px">Get started</div>
+    <h2 class="cta-heading">Fair grades start with<br><span style="background:linear-gradient(120deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">real data.</span></h2>
+    <p class="cta-sub">Try both demo accounts. No sign-up. See exactly what students and professors experience.</p>
+    <div class="demo-cards">
+      <div class="demo-card">
+        <div class="demo-card-icon" style="background:rgba(192,132,252,.12)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div>
+          <div class="demo-card-label">Try as a</div>
+          <div class="demo-card-title">Student</div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </div>
+      <div class="demo-card">
+        <div class="demo-card-icon" style="background:rgba(244,114,182,.12)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <div>
+          <div class="demo-card-label">Try as a</div>
+          <div class="demo-card-title">Professor</div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">Team<em>Fit</em> AI</div>
+  <div class="footer-text">React · Flask · Monaco · Judge0</div>
+  <div class="footer-text">© 2025 TeamFit AI</div>
+</footer>
+
+<script>
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursor.style.left=mx+'px';cursor.style.top=my+'px'});
+(function animRing(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=Math.round(rx)+'px';ring.style.top=Math.round(ry)+'px';requestAnimationFrame(animRing)})();
+document.querySelectorAll('button,.demo-card').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cursor.style.width='18px';cursor.style.height='18px';ring.style.width='52px';ring.style.height='52px'});
+  el.addEventListener('mouseleave',()=>{cursor.style.width='10px';cursor.style.height='10px';ring.style.width='36px';ring.style.height='36px'});
+});
+
+// Canvas particle/connection field
+const canvas=document.getElementById('bg-canvas');
+const ctx=canvas.getContext('2d');
+let W,H,particles=[];
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
+resize();window.addEventListener('resize',resize);
+class Particle{
+  constructor(){this.reset()}
+  reset(){this.x=Math.random()*W;this.y=Math.random()*H;this.vx=(Math.random()-.5)*.3;this.vy=(Math.random()-.5)*.3;this.r=Math.random()*1.5+.5;this.a=Math.random()}
+  update(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>W)this.vx*=-1;if(this.y<0||this.y>H)this.vy*=-1}
+}
+for(let i=0;i<90;i++)particles.push(new Particle());
+const COLORS=['rgba(192,132,252,','rgba(244,114,182,','rgba(56,189,248,'];
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  for(let i=0;i<particles.length;i++){
+    const p=particles[i];p.update();
+    const col=COLORS[i%3];
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=col+'0.5)';ctx.fill();
+    for(let j=i+1;j<particles.length;j++){
+      const q=particles[j];const dx=p.x-q.x;const dy=p.y-q.y;const d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){
+        ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);
+        ctx.strokeStyle=col+((.18*(1-d/120)).toFixed(2))+')';ctx.lineWidth=.5;ctx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+
+// Animate bars after load
+setTimeout(()=>{
+  document.getElementById('bar1').style.width='68%';document.getElementById('pct1').textContent='68%';
+  document.getElementById('bar2').style.width='22%';document.getElementById('pct2').textContent='22%';
+  document.getElementById('bar3').style.width='10%';document.getElementById('pct3').textContent='10%';
+},600);
+// Count-up metrics
+function countUp(id,end,suffix,dur){
+  const el=document.getElementById(id);let s=0;const step=dur/60;
+  const t=setInterval(()=>{s+=end/60;if(s>=end){el.textContent=end+suffix;clearInterval(t)}else el.textContent=Math.round(s)+suffix},step);
+}
+setTimeout(()=>{countUp('mks',347,'',1800);countUp('mat',24,'m',1800);setTimeout(()=>{document.getElementById('msc').textContent='91'},1900)},800);
+
+// Scroll reveal
+const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+setTimeout(()=>document.querySelectorAll('.reveal').forEach(el=>el.classList.add('visible')),100);
+</script>
+</body>
+</html>
