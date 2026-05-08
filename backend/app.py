@@ -36,7 +36,7 @@ def create_app():
     app.config.from_object(Config)
 
     # ── CORS — allow configured origins (or all in dev) ──
-    CORS(app, resources={r"/api/*": {"origins": Config.CORS_ORIGINS}})
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     # ── Initialize database ──
     try:
