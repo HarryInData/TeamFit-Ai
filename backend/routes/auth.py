@@ -11,9 +11,13 @@ from middleware.auth import create_token
 auth_bp = Blueprint("auth", __name__)
 
 
-@auth_bp.route("/api/auth/login", methods=["POST"])
+@auth_bp.route("/auth/login", methods=["POST", "OPTIONS"])
 def login():
     """Authenticate user and return JWT token."""
+    # Handle preflight explicitly as a safety net
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+
     data = request.get_json()
 
     if not data:
@@ -45,9 +49,12 @@ def login():
     })
 
 
-@auth_bp.route("/api/auth/register", methods=["POST"])
+@auth_bp.route("/auth/register", methods=["POST", "OPTIONS"])
 def register():
     """Register a new user and return JWT token."""
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+
     data = request.get_json()
 
     if not data:
@@ -76,9 +83,12 @@ def register():
     }), 201
 
 
-@auth_bp.route("/auth/google", methods=["POST"])
+@auth_bp.route("/auth/google", methods=["POST", "OPTIONS"])
 def google_auth():
     """Mock Google auth — auto-creates/logs in user."""
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+
     data = request.get_json()
     role = data.get("role", "student") if data else "student"
 

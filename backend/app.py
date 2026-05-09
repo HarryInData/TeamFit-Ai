@@ -35,8 +35,15 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # ── CORS — allow configured origins (or all in dev) ──
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    # ── CORS — allow configured origins with full preflight support ──
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": Config.CORS_ORIGINS}},
+        supports_credentials=True,
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+        expose_headers=["Content-Type", "Authorization"],
+    )
 
     # ── Initialize database ──
     try:
@@ -108,4 +115,5 @@ if __name__ == "__main__":
     print(f"❤️  Health:  http://localhost:{port}/api/health")
     print("🔐 Auth: JWT (Bearer token)")
     print(f"💾 Database: {db_label}")
+    print(f"🌐 CORS Origins: {Config.CORS_ORIGINS}")
     app.run(debug=Config.FLASK_DEBUG, port=port, host="0.0.0.0")
