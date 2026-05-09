@@ -7,8 +7,10 @@
  * ═══════════════════════════════════════════
  */
 
+// VITE_API_URL should be the backend root (e.g. https://teamfit-ai.onrender.com)
+// In dev, falls back to /api which is handled by Vite proxy.
 const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
+  ? import.meta.env.VITE_API_URL.replace(/\/+$/, '')  // strip trailing slash
   : '/api';
 
 function getToken() {

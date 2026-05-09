@@ -1,0 +1,508 @@
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #07090f;
+  --s-teal: #2dd4b0;
+  --s-teal-dim: rgba(45,212,176,0.1);
+  --s-teal-border: rgba(45,212,176,0.25);
+  --p-amber: #f5a623;
+  --p-amber-dim: rgba(245,166,35,0.1);
+  --p-amber-border: rgba(245,166,35,0.25);
+  --surface: rgba(255,255,255,0.032);
+  --border: rgba(255,255,255,0.07);
+  --text: #eef2f7;
+  --muted: #4a607a;
+  --sub: #8aa0b8;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.scene {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Background layers ── */
+.bg {
+  position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+}
+.grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 52px 52px;
+  animation: gShift 25s linear infinite;
+}
+@keyframes gShift { to { transform: translate(52px,52px); } }
+
+.orb { position: absolute; border-radius: 50%; filter: blur(90px); }
+.orb.student { width: 480px; height: 480px; background: radial-gradient(circle, rgba(45,212,176,0.1), transparent 70%); top: -100px; right: -60px; animation: ob1 16s ease-in-out infinite; }
+.orb.prof { width: 420px; height: 420px; background: radial-gradient(circle, rgba(245,166,35,0.08), transparent 70%); bottom: -80px; left: -60px; animation: ob2 20s ease-in-out infinite; }
+@keyframes ob1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,40px)} }
+@keyframes ob2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,-30px)} }
+
+/* Corner marks */
+.cm { position: absolute; width: 60px; height: 60px; opacity: 0.2; }
+.cm.tl { top: 24px; left: 24px; border-top: 1px solid var(--s-teal); border-left: 1px solid var(--s-teal); }
+.cm.br { bottom: 24px; right: 24px; border-bottom: 1px solid var(--p-amber); border-right: 1px solid var(--p-amber); }
+
+/* ── Screen system ── */
+.screen { display: none; width: 100%; max-width: 960px; padding: 0 24px; }
+.screen.active { display: block; animation: fadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+/* ══════════════════════════════
+   ROLE PICKER SCREEN
+══════════════════════════════ */
+.picker-header {
+  text-align: center;
+  margin-bottom: 48px;
+}
+.logo-row {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  margin-bottom: 28px;
+}
+.logo-box {
+  width: 42px; height: 42px;
+  border: 1.5px solid var(--s-teal);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-box svg { width: 20px; height: 20px; stroke: var(--s-teal); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.logo-name { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+.logo-name span { color: var(--s-teal); }
+
+.picker-title { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+.picker-sub { font-size: 14px; color: var(--sub); font-weight: 300; }
+
+.role-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.role-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 36px 32px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.25s ease, border-color 0.25s ease;
+  background: var(--surface);
+}
+.role-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  opacity: 0; transition: opacity 0.25s;
+}
+.role-card.s-card::before { background: linear-gradient(90deg, transparent, var(--s-teal), transparent); }
+.role-card.p-card::before { background: linear-gradient(90deg, transparent, var(--p-amber), transparent); }
+.role-card:hover { transform: translateY(-3px); }
+.role-card.s-card:hover { border-color: var(--s-teal-border); }
+.role-card.p-card:hover { border-color: var(--p-amber-border); }
+.role-card:hover::before { opacity: 1; }
+
+.role-icon {
+  width: 52px; height: 52px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+  font-size: 22px;
+}
+.s-card .role-icon { background: var(--s-teal-dim); }
+.p-card .role-icon { background: var(--p-amber-dim); }
+
+.role-card h3 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+.s-card h3 { color: var(--s-teal); }
+.p-card h3 { color: var(--p-amber); }
+
+.role-card p { font-size: 13px; color: var(--sub); line-height: 1.6; font-weight: 300; margin-bottom: 24px; }
+
+.role-features { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+.feat { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.feat-dot { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+.s-card .feat-dot { background: var(--s-teal); }
+.p-card .feat-dot { background: var(--p-amber); }
+
+.enter-btn {
+  width: 100%; padding: 11px; border-radius: 10px;
+  border: none; cursor: pointer;
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.3px; transition: all 0.2s ease;
+}
+.s-card .enter-btn { background: var(--s-teal); color: #04201a; }
+.p-card .enter-btn { background: var(--p-amber); color: #2a1a00; }
+.enter-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+.corner-badge {
+  position: absolute; top: 16px; right: 16px;
+  font-size: 10px; padding: 3px 8px; border-radius: 20px;
+  font-weight: 500; letter-spacing: 0.5px;
+}
+.s-card .corner-badge { background: var(--s-teal-dim); color: var(--s-teal); border: 1px solid var(--s-teal-border); }
+.p-card .corner-badge { background: var(--p-amber-dim); color: var(--p-amber); border: 1px solid var(--p-amber-border); }
+
+/* ══════════════════════════════
+   LOGIN SCREENS (shared layout)
+══════════════════════════════ */
+.login-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  min-height: 560px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.login-side {
+  padding: 44px 40px;
+  display: flex; flex-direction: column; justify-content: center;
+  position: relative; overflow: hidden;
+}
+
+.login-brand { background: var(--surface); }
+.login-brand.s-theme { border-right: 1px solid var(--s-teal-border); }
+.login-brand.p-theme { border-right: 1px solid var(--p-amber-border); }
+
+.brand-top { display: flex; flex-direction: column; gap: 28px; }
+.brand-tag {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.8px;
+  text-transform: uppercase; padding: 5px 10px; border-radius: 20px;
+  width: fit-content;
+}
+.s-theme .brand-tag { background: var(--s-teal-dim); color: var(--s-teal); border: 1px solid var(--s-teal-border); }
+.p-theme .brand-tag { background: var(--p-amber-dim); color: var(--p-amber); border: 1px solid var(--p-amber-border); }
+
+.brand-heading { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; letter-spacing: -0.8px; line-height: 1.1; }
+.brand-desc { font-size: 13px; color: var(--sub); line-height: 1.65; font-weight: 300; }
+
+.brand-stats { display: flex; gap: 24px; margin-top: 8px; }
+.bstat { display: flex; flex-direction: column; gap: 3px; }
+.bstat-num { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.s-theme .bstat-num { color: var(--s-teal); }
+.p-theme .bstat-num { color: var(--p-amber); }
+.bstat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+.brand-perks { display: flex; flex-direction: column; gap: 9px; }
+.perk { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--sub); }
+.perk-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.s-theme .perk-dot { background: var(--s-teal); box-shadow: 0 0 5px var(--s-teal); }
+.p-theme .perk-dot { background: var(--p-amber); box-shadow: 0 0 5px var(--p-amber); }
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--muted); padding: 0;
+  margin-bottom: 32px; transition: color 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+.back-btn:hover { color: var(--sub); }
+
+/* Form side */
+.login-form { background: rgba(0,0,0,0.25); padding: 44px 40px; display: flex; flex-direction: column; justify-content: center; }
+
+.form-header { margin-bottom: 28px; }
+.form-header h2 { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 5px; }
+.form-header p { font-size: 13px; color: var(--sub); }
+
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 10px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 7px; }
+.field input {
+  width: 100%; padding: 11px 14px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+  color: var(--text); outline: none; transition: all 0.2s;
+}
+.field input::placeholder { color: var(--muted); }
+
+.s-form input:focus { border-color: var(--s-teal-border); background: rgba(45,212,176,0.04); }
+.p-form input:focus { border-color: var(--p-amber-border); background: rgba(245,166,35,0.04); }
+
+.field-row { position: relative; }
+.pw-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--muted); font-size: 13px; transition: color 0.2s; }
+.pw-toggle:hover { color: var(--sub); }
+
+.extras { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.chk-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--sub); cursor: pointer; }
+.chk-label input { accent-color: var(--s-teal); width: 13px; height: 13px; }
+.p-form .chk-label input { accent-color: var(--p-amber); }
+.fgt { font-size: 12px; text-decoration: none; transition: opacity 0.2s; }
+.s-form .fgt { color: var(--s-teal); }
+.p-form .fgt { color: var(--p-amber); }
+.fgt:hover { opacity: 0.7; }
+
+.sub-btn {
+  width: 100%; padding: 13px; border: none; border-radius: 10px;
+  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; letter-spacing: 0.3px;
+  position: relative; overflow: hidden;
+  transition: transform 0.15s ease, opacity 0.2s;
+  margin-bottom: 16px;
+}
+.s-form .sub-btn { background: var(--s-teal); color: #04201a; }
+.p-form .sub-btn { background: var(--p-amber); color: #2a1a00; }
+.sub-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.sub-btn:active { transform: translateY(0); }
+.sub-btn .spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.2); border-top-color: rgba(0,0,0,0.7); border-radius: 50%; animation: spin 0.6s linear infinite; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.sub-btn.loading .btn-label { opacity: 0; }
+.sub-btn.loading .spinner { display: block; }
+@keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+.or-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.or-line { flex: 1; height: 1px; background: var(--border); }
+.or-row span { font-size: 11px; color: var(--muted); }
+
+.g-btn {
+  width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 10px;
+  background: transparent; font-family: 'DM Sans', sans-serif; font-size: 13px;
+  color: var(--sub); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.2s; margin-bottom: 18px;
+}
+.g-btn:hover { border-color: rgba(255,255,255,0.12); color: var(--text); background: rgba(255,255,255,0.03); }
+.g-icon { width: 15px; height: 15px; }
+
+.signup-row { text-align: center; font-size: 12px; color: var(--muted); }
+.signup-row a { text-decoration: none; font-weight: 500; }
+.s-form .signup-row a { color: var(--s-teal); }
+.p-form .signup-row a { color: var(--p-amber); }
+
+.sec-row {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+  font-size: 10px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase;
+}
+.sec-dot { width: 5px; height: 5px; border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
+.s-form .sec-dot { background: var(--s-teal); }
+.p-form .sec-dot { background: var(--p-amber); }
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+/* extra field for professor — institution */
+.inst-field { display: none; }
+</style>
+
+<div class="scene">
+  <div class="bg">
+    <div class="grid"></div>
+    <div class="orb student"></div>
+    <div class="orb prof"></div>
+    <div class="cm tl"></div>
+    <div class="cm br"></div>
+  </div>
+
+  <!-- ① ROLE PICKER -->
+  <div class="screen active" id="screenPicker">
+    <div class="picker-header">
+      <div class="logo-row">
+        <div class="logo-box">
+          <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <span class="logo-name">TeamFit <span>AI</span></span>
+      </div>
+      <h1 class="picker-title">Who are you signing in as?</h1>
+      <p class="picker-sub">Choose your role to get the right experience</p>
+    </div>
+
+    <div class="role-cards">
+      <!-- Student Card -->
+      <div class="role-card s-card" onclick="goTo('screenStudent')">
+        <span class="corner-badge">LEARNER</span>
+        <div class="role-icon">🎓</div>
+        <h3>Student</h3>
+        <p>Track your contributions, view team analytics, and get AI-powered feedback on your collaboration.</p>
+        <div class="role-features">
+          <div class="feat"><div class="feat-dot"></div> Real-time contribution dashboard</div>
+          <div class="feat"><div class="feat-dot"></div> Peer evaluation & self-assessment</div>
+          <div class="feat"><div class="feat-dot"></div> Team health insights</div>
+          <div class="feat"><div class="feat-dot"></div> AI-generated progress reports</div>
+        </div>
+        <button class="enter-btn">Enter as Student →</button>
+      </div>
+
+      <!-- Professor Card -->
+      <div class="role-card p-card" onclick="goTo('screenProfessor')">
+        <span class="corner-badge">EDUCATOR</span>
+        <div class="role-icon">🏛</div>
+        <h3>Professor</h3>
+        <p>Manage cohorts, evaluate teams fairly, and get deep AI insights on individual contribution patterns.</p>
+        <div class="role-features">
+          <div class="feat"><div class="feat-dot"></div> Class & cohort management</div>
+          <div class="feat"><div class="feat-dot"></div> AI-driven grading recommendations</div>
+          <div class="feat"><div class="feat-dot"></div> Individual contribution heatmaps</div>
+          <div class="feat"><div class="feat-dot"></div> Export reports for administration</div>
+        </div>
+        <button class="enter-btn">Enter as Professor →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② STUDENT LOGIN -->
+  <div class="screen" id="screenStudent">
+    <div class="login-wrap">
+      <div class="login-side login-brand s-theme">
+        <div class="brand-top">
+          <span class="brand-tag">🎓 Student Portal</span>
+          <div>
+            <h2 class="brand-heading">Your team.<br>Your contribution.<br><span style="color:var(--s-teal)">Your grade.</span></h2>
+          </div>
+          <p class="brand-desc">Get a transparent view of how you and your teammates are performing — powered by AI, not guesswork.</p>
+          <div class="brand-stats">
+            <div class="bstat"><span class="bstat-num">12k+</span><span class="bstat-lbl">Students</span></div>
+            <div class="bstat"><span class="bstat-num">98%</span><span class="bstat-lbl">Accuracy</span></div>
+            <div class="bstat"><span class="bstat-num">4.9★</span><span class="bstat-lbl">Rating</span></div>
+          </div>
+          <div class="brand-perks">
+            <div class="perk"><div class="perk-dot"></div> Submit peer evaluations in seconds</div>
+            <div class="perk"><div class="perk-dot"></div> See your AI-generated contribution score</div>
+            <div class="perk"><div class="perk-dot"></div> Get notified when grades update</div>
+          </div>
+        </div>
+      </div>
+      <div class="login-side login-form s-form">
+        <button class="back-btn" onclick="goTo('screenPicker')">← Back to role select</button>
+        <div class="form-header">
+          <h2>Student Sign In</h2>
+          <p>Welcome back — your dashboard awaits</p>
+        </div>
+        <div class="field">
+          <label>University Email</label>
+          <div class="field-row">
+            <input type="email" id="s-email" placeholder="you@university.edu" autocomplete="email">
+          </div>
+        </div>
+        <div class="field">
+          <label>Student ID <span style="color:var(--muted);font-size:9px;margin-left:4px">(optional)</span></label>
+          <input type="text" id="s-id" placeholder="e.g. STU2024001">
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <div class="field-row">
+            <input type="password" id="s-pw" placeholder="Enter your password" autocomplete="current-password">
+            <button class="pw-toggle" onclick="togglePw('s-pw',this)">👁</button>
+          </div>
+        </div>
+        <div class="extras">
+          <label class="chk-label"><input type="checkbox"> Keep me signed in</label>
+          <a href="#" class="fgt">Forgot password?</a>
+        </div>
+        <button class="sub-btn" onclick="handleLogin(this,'s-email','s-pw')">
+          <span class="btn-label">Sign In as Student</span>
+          <div class="spinner"></div>
+        </button>
+        <div class="or-row"><div class="or-line"></div><span>or</span><div class="or-line"></div></div>
+        <button class="g-btn">
+          <svg class="g-icon" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continue with Google
+        </button>
+        <div class="signup-row">New here? <a href="#">Create your student account</a></div>
+        <div class="sec-row"><div class="sec-dot"></div> Encrypted · FERPA Compliant</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ PROFESSOR LOGIN -->
+  <div class="screen" id="screenProfessor">
+    <div class="login-wrap">
+      <div class="login-side login-brand p-theme">
+        <div class="brand-top">
+          <span class="brand-tag">🏛 Professor Portal</span>
+          <div>
+            <h2 class="brand-heading">Grade fairly.<br>Every time.<br><span style="color:var(--p-amber)">AI-guaranteed.</span></h2>
+          </div>
+          <p class="brand-desc">Access contribution heatmaps, peer review data, and AI recommendations — all in one command center.</p>
+          <div class="brand-stats">
+            <div class="bstat"><span class="bstat-num">340+</span><span class="bstat-lbl">Educators</span></div>
+            <div class="bstat"><span class="bstat-num">50k+</span><span class="bstat-lbl">Evaluations</span></div>
+            <div class="bstat"><span class="bstat-num">99.2%</span><span class="bstat-lbl">Uptime</span></div>
+          </div>
+          <div class="brand-perks">
+            <div class="perk"><div class="perk-dot"></div> Manage all your class cohorts</div>
+            <div class="perk"><div class="perk-dot"></div> AI flags free-riders automatically</div>
+            <div class="perk"><div class="perk-dot"></div> Export to LMS with one click</div>
+          </div>
+        </div>
+      </div>
+      <div class="login-side login-form p-form">
+        <button class="back-btn" onclick="goTo('screenPicker')">← Back to role select</button>
+        <div class="form-header">
+          <h2>Professor Sign In</h2>
+          <p>Access your educator command center</p>
+        </div>
+        <div class="field">
+          <label>Institutional Email</label>
+          <input type="email" id="p-email" placeholder="prof@institution.edu" autocomplete="email">
+        </div>
+        <div class="field">
+          <label>Institution / University</label>
+          <input type="text" id="p-inst" placeholder="e.g. MIT, Stanford, IIT Delhi">
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <div class="field-row">
+            <input type="password" id="p-pw" placeholder="Enter your password" autocomplete="current-password">
+            <button class="pw-toggle" onclick="togglePw('p-pw',this)">👁</button>
+          </div>
+        </div>
+        <div class="extras">
+          <label class="chk-label"><input type="checkbox"> Stay signed in</label>
+          <a href="#" class="fgt">Reset password</a>
+        </div>
+        <button class="sub-btn" onclick="handleLogin(this,'p-email','p-pw')">
+          <span class="btn-label">Sign In as Professor</span>
+          <div class="spinner"></div>
+        </button>
+        <div class="or-row"><div class="or-line"></div><span>or</span><div class="or-line"></div></div>
+        <button class="g-btn">
+          <svg class="g-icon" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+          Continue with Google Workspace
+        </button>
+        <div class="signup-row">New educator? <a href="#">Request institutional access</a></div>
+        <div class="sec-row"><div class="sec-dot"></div> SSO Ready · SOC 2 Compliant</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  el.classList.add('active');
+}
+
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+function handleLogin(btn, emailId, pwId) {
+  const email = document.getElementById(emailId).value;
+  const pw = document.getElementById(pwId).value;
+  if (!email || !pw) {
+    document.getElementById(emailId).style.borderColor = 'rgba(242,92,110,0.5)';
+    document.getElementById(pwId).style.borderColor = 'rgba(242,92,110,0.5)';
+    setTimeout(() => {
+      document.getElementById(emailId).style.borderColor = '';
+      document.getElementById(pwId).style.borderColor = '';
+    }, 1600);
+    return;
+  }
+  btn.classList.add('loading');
+  setTimeout(() => btn.classList.remove('loading'), 2200);
+}
+</script>

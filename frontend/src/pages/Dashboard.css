@@ -127,11 +127,15 @@
 /* ── Sidebar ── */
 .dash-sidebar {
   width: var(--sidebar-width);
+  min-width: 160px;
+  max-width: 220px;
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
 }
 .dash-dept {
   padding: var(--space-md);
@@ -149,7 +153,10 @@
 }
 .dash-sidebar-nav {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   padding: var(--space-sm) 0;
+  overflow-y: auto;
 }
 .dash-sidebar-link {
   display: flex;
@@ -162,6 +169,9 @@
   font-size: var(--font-size-sm);
   text-align: left;
   transition: all var(--transition-fast);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .dash-sidebar-link:hover { background: var(--color-surface-hover); color: var(--color-text); }
 .dash-sidebar-link--active {

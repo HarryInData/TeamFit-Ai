@@ -343,12 +343,12 @@ export default function Workspace() {
       </header>
 
       <div className="ws-body">
-        {/* ── File Sidebar — Clickable ── */}
+        {/* ── File Sidebar — VS Code-style vertical file explorer ── */}
         <aside className="ws-sidebar">
           <div className="ws-sidebar-header">
             <span className="ws-sidebar-icon">📁</span>
             <div>
-              <div className="ws-sidebar-title">Files</div>
+              <div className="ws-sidebar-title">Explorer</div>
               <div className="ws-sidebar-sub">{selectedLang.name} Project</div>
             </div>
           </div>
@@ -378,25 +378,11 @@ export default function Workspace() {
 
         {/* ── Main Editor Area ── */}
         <main className="ws-main">
-          {/* Editor Tabs — reflects activeFile */}
+          {/* Editor Tab — shows only the active file */}
           <div className="ws-editor-tabs">
-            {files.filter((f) => f.name === activeFile || f.name === `main${selectedLang.ext}`).map((f) => (
-              <button
-                key={f.name}
-                className={`ws-tab ${activeFile === f.name ? 'ws-tab--active' : ''}`}
-                onClick={() => handleFileClick(f.name)}
-              >
-                <LangIcon icon={f.icon} className="ws-tab-icon" size={16} /> {f.name}
-              </button>
-            ))}
-            {activeFile !== `main${selectedLang.ext}` && (
-              <button
-                className="ws-tab ws-tab--active"
-                onClick={() => handleFileClick(activeFile)}
-              >
-                <span className="ws-tab-icon">📄</span> {activeFile}
-              </button>
-            )}
+            <button className="ws-tab ws-tab--active">
+              <LangIcon icon={files.find(f => f.name === activeFile)?.icon || '📄'} className="ws-tab-icon" size={16} /> {activeFile}
+            </button>
           </div>
 
           {/* Monaco Editor — language changes dynamically */}

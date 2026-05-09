@@ -937,34 +937,32 @@ export default function Dashboard() {
       </header>
 
       <div className="dash-body">
-        {/* ── Sidebar — with active state switching ── */}
-        {activeNav === 'Analytics' && (
-          <aside className="dash-sidebar">
-            <div className="dash-dept">
-              <div className="dash-dept-name">Department of CS</div>
-              <div className="dash-dept-sub">Fall 2023 Cohort</div>
-            </div>
-            <nav className="dash-sidebar-nav">
-              {SIDEBAR_LINKS.map((link) => (
-                <button
-                  key={link.id}
-                  className={`dash-sidebar-link ${activeSidebar === link.id ? 'dash-sidebar-link--active' : ''}`}
-                  onClick={() => setActiveSidebar(link.id)}
-                >
-                  <span>{link.icon}</span> {link.name}
-                </button>
-              ))}
-            </nav>
-            <div className="dash-sidebar-bottom">
-              <button className="dash-report-btn" onClick={handleGenerateReport}>Generate Report</button>
-              <button className="dash-sidebar-link" onClick={() => alert('Support: Contact admin@teamfit.ai')}>❓ Support</button>
-              <button className="dash-sidebar-link" onClick={() => alert('Documentation: https://docs.teamfit.ai')}>📄 Documentation</button>
-            </div>
-          </aside>
-        )}
+        {/* ── Sidebar — always visible with vertical stacked nav ── */}
+        <aside className="dash-sidebar">
+          <div className="dash-dept">
+            <div className="dash-dept-name">Department of CS</div>
+            <div className="dash-dept-sub">Fall 2023 Cohort</div>
+          </div>
+          <nav className="dash-sidebar-nav">
+            {SIDEBAR_LINKS.map((link) => (
+              <button
+                key={link.id}
+                className={`dash-sidebar-link ${activeSidebar === link.id ? 'dash-sidebar-link--active' : ''}`}
+                onClick={() => { setActiveSidebar(link.id); setActiveNav('Analytics'); }}
+              >
+                <span>{link.icon}</span> {link.name}
+              </button>
+            ))}
+          </nav>
+          <div className="dash-sidebar-bottom">
+            <button className="dash-report-btn" onClick={handleGenerateReport}>Generate Report</button>
+            <button className="dash-sidebar-link" onClick={() => alert('Support: Contact admin@teamfit.ai')}>❓ Support</button>
+            <button className="dash-sidebar-link" onClick={() => alert('Documentation: https://docs.teamfit.ai')}>📄 Documentation</button>
+          </div>
+        </aside>
 
         {/* ── Main Content — changes with nav and sidebar ── */}
-        <main className={`dash-main ${activeNav !== 'Analytics' ? 'dash-main--full' : ''}`}>
+        <main className="dash-main">
           {renderNavContent()}
         </main>
       </div>
