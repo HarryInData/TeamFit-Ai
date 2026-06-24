@@ -1,4 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import { auth, googleProvider } from '../config/firebase';
+import { googleLogin } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -43,6 +46,19 @@ export function AuthProvider({ children }) {
     localStorage.setItem('teamfit_token', tokenValue);
   }
 
+  /**
+   * Sign in with Google via Firebase popup.
+   * After Firebase auth, sends the ID token to the backend
+   * for server-side verification and JWT generation.
+   */
+  async function signInWithGoogle(role) {
+    const result = await signInWithPopup(auth, googleProvider);
+    const idToken = await result.user.getIdToken();
+    const data = await googleLogin(idToken, role);
+    loginUser(data.user, data.token);
+    return data;
+  }
+
   function setSession(id, code) {
     setSessionId(id);
     setSessionCode(code);
@@ -66,6 +82,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('teamfit_token');
     localStorage.removeItem('teamfit_session_id');
     localStorage.removeItem('teamfit_session_code');
+    // Also sign out of Firebase to clear Google session
+    firebaseSignOut(auth).catch(() => {});
   }
 
   return (
@@ -73,6 +91,7 @@ export function AuthProvider({ children }) {
       user, token, loading,
       sessionId, sessionCode,
       loginUser, logout,
+      signInWithGoogle,
       setSession, clearSession,
     }}>
       {children}

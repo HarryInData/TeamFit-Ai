@@ -68,11 +68,11 @@ export async function register(name, email, password, role) {
   });
 }
 
-export async function googleLogin(role) {
+export async function googleLogin(idToken, role) {
   return apiFetch(`${API_BASE}/auth/google`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role }),
+    body: JSON.stringify({ idToken, role }),
   });
 }
 

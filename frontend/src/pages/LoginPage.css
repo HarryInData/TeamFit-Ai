@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════
-   LOGIN PAGE — Dual-Role Premium Login
-   Inspired by teamfit_dual_role_login.html
+   LOGIN PAGE — Premium Dual-Role Login
+   Enhanced with glassmorphism, particles,
+   and micro-animations.
    ═══════════════════════════════════════════ */
 
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
@@ -9,17 +10,28 @@
 .login-page {
   --bg: #07090f;
   --s-teal: #2dd4b0;
+  --s-teal-mid: rgba(45,212,176,0.35);
   --s-teal-dim: rgba(45,212,176,0.1);
   --s-teal-border: rgba(45,212,176,0.25);
+  --s-teal-glow: rgba(45,212,176,0.15);
   --p-amber: #f5a623;
+  --p-amber-mid: rgba(245,166,35,0.35);
   --p-amber-dim: rgba(245,166,35,0.1);
   --p-amber-border: rgba(245,166,35,0.25);
+  --p-amber-glow: rgba(245,166,35,0.15);
   --surface: rgba(255,255,255,0.032);
+  --surface-hover: rgba(255,255,255,0.055);
   --border: rgba(255,255,255,0.07);
+  --border-hover: rgba(255,255,255,0.14);
   --text: #eef2f7;
   --muted: #4a607a;
   --sub: #8aa0b8;
-  --danger: rgba(242,92,110,0.5);
+  --danger: #f25c6e;
+  --danger-bg: rgba(242,92,110,0.08);
+  --danger-border: rgba(242,92,110,0.25);
+  --success: #2dd4b0;
+  --glass: rgba(12,16,28,0.65);
+  --glass-border: rgba(255,255,255,0.06);
 
   font-family: 'DM Sans', sans-serif;
   background: var(--bg);
@@ -49,42 +61,44 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
   background-size: 52px 52px;
   animation: lgGridShift 25s linear infinite;
+  mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black 30%, transparent 100%);
 }
-@keyframes lgGridShift { to { transform: translate(52px,52px); } }
+@keyframes lgGridShift { to { transform: translate(52px, 52px); } }
 
 .login-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
+  filter: blur(100px);
 }
 .login-orb--student {
-  width: 480px;
-  height: 480px;
-  background: radial-gradient(circle, rgba(45,212,176,0.1), transparent 70%);
-  top: -100px;
-  right: -60px;
-  animation: lgOrb1 16s ease-in-out infinite;
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(45,212,176,0.12), transparent 70%);
+  top: -120px;
+  right: -80px;
+  animation: lgOrb1 18s ease-in-out infinite;
 }
 .login-orb--prof {
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle, rgba(245,166,35,0.08), transparent 70%);
-  bottom: -80px;
-  left: -60px;
-  animation: lgOrb2 20s ease-in-out infinite;
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(245,166,35,0.09), transparent 70%);
+  bottom: -100px;
+  left: -80px;
+  animation: lgOrb2 22s ease-in-out infinite;
 }
-@keyframes lgOrb1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,40px)} }
-@keyframes lgOrb2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(30px,-30px)} }
+@keyframes lgOrb1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-40px,50px) scale(1.05)} }
+@keyframes lgOrb2 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(40px,-35px) scale(1.08)} }
 
 .login-corner {
   position: absolute;
   width: 60px;
   height: 60px;
-  opacity: 0.2;
+  opacity: 0.15;
 }
 .login-corner--tl {
   top: 24px;
@@ -99,16 +113,62 @@
   border-right: 1px solid var(--p-amber);
 }
 
+/* ── Floating Particles ── */
+.login-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.login-particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  opacity: 0;
+  animation: lgParticleFloat linear infinite;
+}
+.login-particle--teal {
+  background: var(--s-teal);
+  box-shadow: 0 0 6px var(--s-teal-glow);
+}
+.login-particle--amber {
+  background: var(--p-amber);
+  box-shadow: 0 0 6px var(--p-amber-glow);
+}
+@keyframes lgParticleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(0) translateX(0) scale(0.5);
+  }
+  15% {
+    opacity: 0.6;
+  }
+  85% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100vh) translateX(30px) scale(1);
+  }
+}
+
 /* ── Screen System ── */
 .login-screen {
   width: 100%;
-  max-width: 960px;
+  max-width: 980px;
   padding: 0 24px;
-  animation: lgFadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both;
+  animation: lgFadeUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
+}
+.login-screen--success {
+  animation: lgSuccessPulse 0.6s ease;
 }
 @keyframes lgFadeUp {
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+@keyframes lgSuccessPulse {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.005); }
 }
 
 /* ═══════════════════════
@@ -127,13 +187,15 @@
   margin-bottom: 28px;
 }
 .picker-logo-box {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: 1.5px solid var(--s-teal);
-  border-radius: 10px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--s-teal-dim);
+  box-shadow: 0 0 20px var(--s-teal-glow);
 }
 .picker-logo-box svg {
   width: 20px;
@@ -146,7 +208,7 @@
 }
 .picker-logo-name {
   font-family: 'Syne', sans-serif;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
 }
 .picker-logo-name span {
@@ -155,10 +217,14 @@
 
 .picker-title {
   font-family: 'Syne', sans-serif;
-  font-size: 32px;
+  font-size: 34px;
   font-weight: 800;
   letter-spacing: -1px;
   margin-bottom: 10px;
+  background: linear-gradient(135deg, var(--text) 0%, var(--sub) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .picker-sub {
   font-size: 14px;
@@ -174,13 +240,36 @@
 
 .role-card {
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 22px;
   padding: 36px 32px;
   cursor: pointer;
   position: relative;
   overflow: hidden;
-  transition: transform 0.25s ease, border-color 0.25s ease;
-  background: var(--surface);
+  transition: transform 0.35s cubic-bezier(0.22,1,0.36,1), border-color 0.3s ease, box-shadow 0.3s ease;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.role-card-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.role-card--student .role-card-glow {
+  background: radial-gradient(circle, var(--s-teal-glow), transparent 70%);
+}
+.role-card--professor .role-card-glow {
+  background: radial-gradient(circle, var(--p-amber-glow), transparent 70%);
+}
+.role-card:hover .role-card-glow {
+  opacity: 1;
 }
 .role-card::before {
   content: '';
@@ -190,7 +279,7 @@
   right: 0;
   height: 1px;
   opacity: 0;
-  transition: opacity 0.25s;
+  transition: opacity 0.3s;
 }
 .role-card--student::before {
   background: linear-gradient(90deg, transparent, var(--s-teal), transparent);
@@ -199,33 +288,38 @@
   background: linear-gradient(90deg, transparent, var(--p-amber), transparent);
 }
 .role-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
 }
 .role-card--student:hover {
   border-color: var(--s-teal-border);
+  box-shadow: 0 8px 40px rgba(45,212,176,0.08), 0 0 0 1px var(--s-teal-border);
 }
 .role-card--professor:hover {
   border-color: var(--p-amber-border);
+  box-shadow: 0 8px 40px rgba(245,166,35,0.08), 0 0 0 1px var(--p-amber-border);
 }
 .role-card:hover::before {
   opacity: 1;
 }
 
 .role-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  font-size: 22px;
+  font-size: 23px;
+  position: relative;
 }
 .role-card--student .role-icon {
   background: var(--s-teal-dim);
+  box-shadow: 0 0 20px var(--s-teal-glow);
 }
 .role-card--professor .role-icon {
   background: var(--p-amber-dim);
+  box-shadow: 0 0 20px var(--p-amber-glow);
 }
 
 .role-card h3 {
@@ -241,7 +335,7 @@
 .role-card p {
   font-size: 13px;
   color: var(--sub);
-  line-height: 1.6;
+  line-height: 1.65;
   font-weight: 300;
   margin-bottom: 24px;
 }
@@ -249,36 +343,48 @@
 .role-features {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
   margin-bottom: 28px;
 }
 .role-feat {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   font-size: 12px;
   color: var(--muted);
+  transition: color 0.2s;
+}
+.role-card:hover .role-feat {
+  color: var(--sub);
 }
 .role-feat-dot {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.role-card--student .role-feat-dot { background: var(--s-teal); }
-.role-card--professor .role-feat-dot { background: var(--p-amber); }
+.role-card--student .role-feat-dot {
+  background: var(--s-teal);
+  box-shadow: 0 0 6px var(--s-teal-glow);
+}
+.role-card--professor .role-feat-dot {
+  background: var(--p-amber);
+  box-shadow: 0 0 6px var(--p-amber-glow);
+}
 
 .role-enter-btn {
   width: 100%;
-  padding: 11px;
-  border-radius: 10px;
+  padding: 12px;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
   font-family: 'Syne', sans-serif;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.3px;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.22,1,0.36,1);
+  position: relative;
+  overflow: hidden;
 }
 .role-card--student .role-enter-btn {
   background: var(--s-teal);
@@ -288,9 +394,26 @@
   background: var(--p-amber);
   color: #2a1a00;
 }
+.role-enter-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.role-enter-btn:hover::after {
+  opacity: 1;
+}
 .role-enter-btn:hover {
-  opacity: 0.88;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+}
+.role-card--student .role-enter-btn:hover {
+  box-shadow: 0 4px 24px var(--s-teal-glow);
+}
+.role-card--professor .role-enter-btn:hover {
+  box-shadow: 0 4px 24px var(--p-amber-glow);
 }
 
 .role-corner-badge {
@@ -298,10 +421,11 @@
   top: 16px;
   right: 16px;
   font-size: 10px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 20px;
   font-weight: 500;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+  z-index: 1;
 }
 .role-card--student .role-corner-badge {
   background: var(--s-teal-dim);
@@ -321,10 +445,11 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0;
-  min-height: 560px;
-  border: 1px solid var(--border);
-  border-radius: 24px;
+  min-height: 580px;
+  border: 1px solid var(--glass-border);
+  border-radius: 26px;
   overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 0 1px var(--glass-border);
 }
 
 .login-side {
@@ -338,7 +463,9 @@
 
 /* Brand side */
 .login-brand {
-  background: var(--surface);
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .login-brand--student {
   border-right: 1px solid var(--s-teal-border);
@@ -346,11 +473,34 @@
 .login-brand--professor {
   border-right: 1px solid var(--p-amber-border);
 }
+/* Shimmer effect on brand side */
+.login-brand::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 40%,
+    rgba(255,255,255,0.015) 50%,
+    transparent 60%
+  );
+  animation: lgBrandShimmer 8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes lgBrandShimmer {
+  0%,100% { transform: translateX(-30%) translateY(-30%); }
+  50% { transform: translateX(30%) translateY(30%); }
+}
 
 .brand-top {
   display: flex;
   flex-direction: column;
   gap: 28px;
+  position: relative;
+  z-index: 1;
 }
 .brand-tag {
   display: inline-flex;
@@ -360,7 +510,7 @@
   font-weight: 500;
   letter-spacing: 0.8px;
   text-transform: uppercase;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 20px;
   width: fit-content;
 }
@@ -380,7 +530,7 @@
   font-size: 28px;
   font-weight: 800;
   letter-spacing: -0.8px;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 .brand-heading-accent--student { color: var(--s-teal); }
 .brand-heading-accent--professor { color: var(--p-amber); }
@@ -388,19 +538,19 @@
 .brand-desc {
   font-size: 13px;
   color: var(--sub);
-  line-height: 1.65;
+  line-height: 1.7;
   font-weight: 300;
 }
 
 .brand-stats {
   display: flex;
-  gap: 24px;
+  gap: 28px;
   margin-top: 8px;
 }
 .brand-stat {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 .brand-stat-num {
   font-family: 'Syne', sans-serif;
@@ -420,12 +570,12 @@
 .brand-perks {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 10px;
 }
 .brand-perk {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   font-size: 12px;
   color: var(--sub);
 }
@@ -437,17 +587,19 @@
 }
 .login-brand--student .brand-perk-dot {
   background: var(--s-teal);
-  box-shadow: 0 0 5px var(--s-teal);
+  box-shadow: 0 0 8px var(--s-teal-glow);
 }
 .login-brand--professor .brand-perk-dot {
   background: var(--p-amber);
-  box-shadow: 0 0 5px var(--p-amber);
+  box-shadow: 0 0 8px var(--p-amber-glow);
 }
 
-/* Form side */
+/* ── Form Side ── */
 .login-form-side {
-  background: rgba(0,0,0,0.25);
-  padding: 44px 40px;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 40px 38px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -463,18 +615,28 @@
   font-size: 12px;
   color: var(--muted);
   padding: 0;
-  margin-bottom: 32px;
-  transition: color 0.2s;
+  margin-bottom: 28px;
+  transition: color 0.2s, transform 0.2s;
   font-family: 'DM Sans', sans-serif;
 }
-.login-back-btn:hover { color: var(--sub); }
+.login-back-btn:hover {
+  color: var(--sub);
+  transform: translateX(-2px);
+}
+.login-back-btn svg {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.login-back-btn:hover svg {
+  opacity: 1;
+}
 
 .login-form-header {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 .login-form-header h2 {
   font-family: 'Syne', sans-serif;
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 700;
   letter-spacing: -0.5px;
   margin-bottom: 5px;
@@ -484,8 +646,9 @@
   color: var(--sub);
 }
 
+/* ── Input Fields ── */
 .login-field {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 .login-field label {
   display: block;
@@ -496,40 +659,80 @@
   letter-spacing: 1.2px;
   margin-bottom: 7px;
 }
-.login-field input {
+
+.login-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.login-input-icon {
+  position: absolute;
+  left: 13px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+  z-index: 1;
+  pointer-events: none;
+}
+.login-input-wrap:focus-within .login-input-icon {
+  color: var(--sub);
+}
+
+.login-input-wrap input {
   width: 100%;
-  padding: 11px 14px;
-  background: rgba(255,255,255,0.04);
+  padding: 12px 14px 12px 38px;
+  background: rgba(255,255,255,0.035);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 11px;
   font-family: 'DM Sans', sans-serif;
   font-size: 14px;
   color: var(--text);
   outline: none;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
 }
-.login-field input::placeholder {
+.login-input-wrap input::placeholder {
   color: var(--muted);
 }
 
-/* Focus states */
-.login-form-side--student input:focus {
+/* Focus glow states */
+.login-form-side--student .login-input-wrap input:focus {
   border-color: var(--s-teal-border);
   background: rgba(45,212,176,0.04);
+  box-shadow: 0 0 0 3px rgba(45,212,176,0.08), 0 0 20px rgba(45,212,176,0.05);
 }
-.login-form-side--professor input:focus {
+.login-form-side--student .login-input-wrap:focus-within .login-input-icon {
+  color: var(--s-teal);
+}
+.login-form-side--professor .login-input-wrap input:focus {
   border-color: var(--p-amber-border);
   background: rgba(245,166,35,0.04);
+  box-shadow: 0 0 0 3px rgba(245,166,35,0.08), 0 0 20px rgba(245,166,35,0.05);
+}
+.login-form-side--professor .login-input-wrap:focus-within .login-input-icon {
+  color: var(--p-amber);
 }
 
-/* Error state */
-.login-field input.login-field--error {
-  border-color: var(--danger);
+/* ── Animated Sign-up Field ── */
+.login-field--animate {
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.22,1,0.36,1),
+              opacity 0.3s ease,
+              margin-bottom 0.35s ease;
+}
+.login-field--visible {
+  max-height: 90px;
+  opacity: 1;
+  margin-bottom: 14px;
+}
+.login-field--hidden {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+  pointer-events: none;
 }
 
-.login-field-row {
-  position: relative;
-}
+/* ── Password Toggle ── */
 .login-pw-toggle {
   position: absolute;
   right: 12px;
@@ -539,16 +742,24 @@
   border: none;
   cursor: pointer;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 11px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   transition: color 0.2s;
+  padding: 4px 6px;
+  border-radius: 4px;
+  z-index: 1;
 }
 .login-pw-toggle:hover { color: var(--sub); }
 
+/* ── Extras Row ── */
 .login-extras {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 .login-chk-label {
   display: flex;
@@ -559,8 +770,9 @@
   cursor: pointer;
 }
 .login-chk-label input {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
 }
 .login-form-side--student .login-chk-label input { accent-color: var(--s-teal); }
 .login-form-side--professor .login-chk-label input { accent-color: var(--p-amber); }
@@ -573,30 +785,51 @@
   border: none;
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
 }
 .login-form-side--student .login-forgot-link { color: var(--s-teal); }
 .login-form-side--professor .login-forgot-link { color: var(--p-amber); }
 .login-forgot-link:hover { opacity: 0.7; }
 
-/* Error message */
+/* ── Error Message ── */
 .login-error-msg {
-  background: rgba(242,92,110,0.1);
-  border: 1px solid rgba(242,92,110,0.3);
-  color: #f25c6e;
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger);
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 13px;
-  margin-bottom: 16px;
-  text-align: center;
-  animation: lgFadeUp 0.3s ease;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: lgShakeIn 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+.login-error-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+@keyframes lgShakeIn {
+  0% { opacity: 0; transform: translateX(-8px); }
+  50% { transform: translateX(4px); }
+  100% { opacity: 1; transform: translateX(0); }
 }
 
-/* Submit button */
+/* ── Submit Button ── */
 .login-submit {
   width: 100%;
   padding: 13px;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font-family: 'Syne', sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -604,35 +837,74 @@
   letter-spacing: 0.3px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.15s ease, opacity 0.2s;
-  margin-bottom: 16px;
+  transition: transform 0.2s cubic-bezier(0.22,1,0.36,1), opacity 0.2s, box-shadow 0.2s;
+  margin-bottom: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
 }
-.login-form-side--student .login-submit { background: var(--s-teal); color: #04201a; }
-.login-form-side--professor .login-submit { background: var(--p-amber); color: #2a1a00; }
-.login-submit:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+.login-form-side--student .login-submit {
+  background: linear-gradient(135deg, var(--s-teal), #1fb898);
+  color: #04201a;
+}
+.login-form-side--professor .login-submit {
+  background: linear-gradient(135deg, var(--p-amber), #e09415);
+  color: #2a1a00;
+}
+.login-submit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.login-submit:hover:not(:disabled)::after { opacity: 1; }
+.login-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+.login-form-side--student .login-submit:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(45,212,176,0.25);
+}
+.login-form-side--professor .login-submit:hover:not(:disabled) {
+  box-shadow: 0 6px 24px rgba(245,166,35,0.25);
+}
 .login-submit:active:not(:disabled) { transform: translateY(0); }
 .login-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* Success state */
+.login-submit--success {
+  background: var(--success) !important;
+  color: #04201a !important;
+}
+.login-success-check {
+  font-size: 18px;
+  font-weight: 700;
+  animation: lgCheckPop 0.4s cubic-bezier(0.22,1,0.36,1);
+}
+@keyframes lgCheckPop {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .login-submit-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(0,0,0,0.2);
-  border-top-color: rgba(0,0,0,0.7);
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(0,0,0,0.15);
+  border-top-color: rgba(0,0,0,0.6);
   border-radius: 50%;
   animation: lgSpin 0.6s linear infinite;
 }
 @keyframes lgSpin { to { transform: rotate(360deg); } }
 
-/* Divider */
+/* ── Divider ── */
 .login-or-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .login-or-line {
   flex: 1;
@@ -642,35 +914,70 @@
 .login-or-row span {
   font-size: 11px;
   color: var(--muted);
+  white-space: nowrap;
 }
 
-/* Google button */
+/* ── Google Button ── */
 .login-google-btn {
   width: 100%;
-  padding: 10px;
+  padding: 12px 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  background: transparent;
+  border-radius: 12px;
+  background: var(--surface);
   font-family: 'DM Sans', sans-serif;
   font-size: 13px;
+  font-weight: 500;
   color: var(--sub);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transition: all 0.2s;
-  margin-bottom: 18px;
+  gap: 10px;
+  transition: all 0.25s cubic-bezier(0.22,1,0.36,1);
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.login-google-btn::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 12px;
+  padding: 1px;
+  background: linear-gradient(135deg, #4285F4, #34A853, #FBBC05, #EA4335);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.login-google-btn:hover::before {
+  opacity: 0.6;
 }
 .login-google-btn:hover {
-  border-color: rgba(255,255,255,0.12);
+  border-color: transparent;
   color: var(--text);
-  background: rgba(255,255,255,0.03);
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
 }
-.login-google-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.login-google-icon { width: 15px; height: 15px; }
+.login-google-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.login-google-icon { width: 16px; height: 16px; }
 
-/* Signup row */
+.login-google-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--sub);
+  border-radius: 50%;
+  animation: lgSpin 0.6s linear infinite;
+}
+
+/* ── Signup Row ── */
 .login-signup-row {
   text-align: center;
   font-size: 12px;
@@ -683,16 +990,18 @@
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  transition: opacity 0.2s;
 }
 .login-form-side--student .login-signup-row button { color: var(--s-teal); }
 .login-form-side--professor .login-signup-row button { color: var(--p-amber); }
+.login-signup-row button:hover { opacity: 0.75; }
 
-/* Security row */
+/* ── Security Row ── */
 .login-sec-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
@@ -701,35 +1010,50 @@
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
-.login-sec-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  animation: lgPulse 2s ease-in-out infinite;
+.login-form-side--student .login-sec-row svg {
+  color: var(--s-teal);
 }
-.login-form-side--student .login-sec-dot { background: var(--s-teal); }
-.login-form-side--professor .login-sec-dot { background: var(--p-amber); }
-@keyframes lgPulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+.login-form-side--professor .login-sec-row svg {
+  color: var(--p-amber);
+}
 
-/* ── Responsive ── */
-@media (max-width: 768px) {
+/* ═══════════════════════
+   RESPONSIVE
+   ═══════════════════════ */
+@media (max-width: 900px) {
   .role-cards {
     grid-template-columns: 1fr;
+    max-width: 480px;
+    margin: 0 auto;
   }
   .login-wrap {
     grid-template-columns: 1fr;
     min-height: auto;
+    max-width: 480px;
+    margin: 0 auto;
   }
   .login-brand {
     display: none;
   }
   .login-form-side {
-    padding: 32px 24px;
+    padding: 36px 28px;
   }
+}
+
+@media (max-width: 480px) {
   .picker-title {
     font-size: 24px;
   }
   .login-screen {
-    padding: 0 16px;
+    padding: 0 12px;
+  }
+  .login-form-side {
+    padding: 28px 20px;
+  }
+  .role-card {
+    padding: 28px 22px;
+  }
+  .brand-heading {
+    font-size: 22px;
   }
 }

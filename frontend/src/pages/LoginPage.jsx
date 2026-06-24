@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { login, register, googleLogin } from "../services/api";
+import { login, register } from "../services/api";
 import "./LoginPage.css";
 
-/* ── Google SVG Icon ── */
+/* ── SVG Icons ── */
 function GoogleIcon() {
   return (
     <svg className="login-google-icon" viewBox="0 0 24 24">
@@ -16,10 +16,47 @@ function GoogleIcon() {
   );
 }
 
+function MailIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2"/>
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <path d="m9 12 2 2 4-4"/>
+    </svg>
+  );
+}
+
+
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { loginUser } = useAuth();
+  const { loginUser, signInWithGoogle } = useAuth();
 
   // Screen: "picker" | "student" | "professor"
   const initialRole = searchParams.get("role");
@@ -29,16 +66,19 @@ export default function LoginPage() {
   );
 
   // Form state
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   // Derived role
   const role = screen === "professor" ? "professor" : "student";
-  const isStudent = role === "student";
 
   // ── Handlers ──
   function goToScreen(s) {
@@ -46,21 +86,48 @@ export default function LoginPage() {
     setError("");
     setEmail("");
     setPassword("");
+    setName("");
     setShowPw(false);
+    setIsSignUp(false);
+    setSuccess(false);
+  }
+
+  function toggleMode() {
+    setIsSignUp(!isSignUp);
+    setError("");
+    setName("");
+    setPassword("");
+    setSuccess(false);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (isSignUp && !name.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
     if (!email || !password) {
       setError("Please enter both email and password.");
+      return;
+    }
+    if (isSignUp && password.length < 6) {
+      setError("Password must be at least 6 characters.");
       return;
     }
     setError("");
     setLoading(true);
     try {
-      const data = await login(email, password, role);
+      let data;
+      if (isSignUp) {
+        data = await register(name, email, password, role);
+      } else {
+        data = await login(email, password, role);
+      }
       loginUser(data.user, data.token);
-      navigate(data.user.role === "professor" ? "/dashboard" : "/session");
+      setSuccess(true);
+      setTimeout(() => {
+        navigate(data.user.role === "professor" ? "/dashboard" : "/session");
+      }, 600);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -70,15 +137,22 @@ export default function LoginPage() {
 
   async function handleGoogle() {
     setError("");
-    setLoading(true);
+    setGoogleLoading(true);
     try {
-      const data = await googleLogin(role);
-      loginUser(data.user, data.token);
-      navigate(data.user.role === "professor" ? "/dashboard" : "/session");
+      const data = await signInWithGoogle(role);
+      setSuccess(true);
+      setTimeout(() => {
+        navigate(data.user.role === "professor" ? "/dashboard" : "/session");
+      }, 600);
     } catch (err) {
-      setError(err.message);
+      if (err.code === "auth/popup-closed-by-user") {
+        // User closed the popup — not an error
+        setGoogleLoading(false);
+        return;
+      }
+      setError(err.message || "Google sign-in failed. Please try again.");
     } finally {
-      setLoading(false);
+      setGoogleLoading(false);
     }
   }
 
@@ -95,6 +169,21 @@ export default function LoginPage() {
           <div className="login-orb login-orb--prof" />
           <div className="login-corner login-corner--tl" />
           <div className="login-corner login-corner--br" />
+          {/* Floating particles */}
+          <div className="login-particles">
+            {Array.from({ length: 20 }, (_, i) => (
+              <div
+                key={i}
+                className={`login-particle login-particle--${i % 2 === 0 ? 'teal' : 'amber'}`}
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 8}s`,
+                  animationDuration: `${6 + Math.random() * 8}s`,
+                }}
+              />
+            ))}
+          </div>
         </div>
 
         {/* ① ROLE PICKER */}
@@ -120,6 +209,7 @@ export default function LoginPage() {
                 onClick={() => goToScreen("student")}
                 id="role-card-student"
               >
+                <div className="role-card-glow" />
                 <span className="role-corner-badge">LEARNER</span>
                 <div className="role-icon">🎓</div>
                 <h3>Student</h3>
@@ -139,6 +229,7 @@ export default function LoginPage() {
                 onClick={() => goToScreen("professor")}
                 id="role-card-professor"
               >
+                <div className="role-card-glow" />
                 <span className="role-corner-badge">EDUCATOR</span>
                 <div className="role-icon">🏛</div>
                 <h3>Professor</h3>
@@ -155,9 +246,9 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* ② STUDENT LOGIN */}
+        {/* ② STUDENT LOGIN / SIGNUP */}
         {screen === "student" && (
-          <div className="login-screen" key="student">
+          <div className={`login-screen ${success ? 'login-screen--success' : ''}`} key="student">
             <div className="login-wrap">
               <div className="login-side login-brand login-brand--student">
                 <div className="brand-top">
@@ -183,69 +274,114 @@ export default function LoginPage() {
               </div>
 
               <form className="login-side login-form-side login-form-side--student" onSubmit={handleSubmit}>
-                <button type="button" className="login-back-btn" onClick={() => goToScreen("picker")}>← Back to role select</button>
+                <button type="button" className="login-back-btn" onClick={() => goToScreen("picker")}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m15 18-6-6 6-6"/>
+                  </svg>
+                  Back to role select
+                </button>
                 <div className="login-form-header">
-                  <h2>Student Sign In</h2>
-                  <p>Welcome back — your dashboard awaits</p>
+                  <h2>{isSignUp ? "Create Student Account" : "Student Sign In"}</h2>
+                  <p>{isSignUp ? "Join your team and start collaborating" : "Welcome back — your dashboard awaits"}</p>
+                </div>
+
+                {/* Google Sign-in — always visible */}
+                <button type="button" className="login-google-btn" onClick={handleGoogle} disabled={googleLoading || loading} id="student-google-btn">
+                  {googleLoading ? (
+                    <div className="login-google-spinner" />
+                  ) : (
+                    <>
+                      <GoogleIcon />
+                      <span>Continue with Google</span>
+                    </>
+                  )}
+                </button>
+
+                <div className="login-or-row"><div className="login-or-line" /><span>or {isSignUp ? "sign up" : "sign in"} with email</span><div className="login-or-line" /></div>
+
+                {/* Name field — sign-up only */}
+                <div className={`login-field login-field--animate ${isSignUp ? 'login-field--visible' : 'login-field--hidden'}`}>
+                  <label htmlFor="s-name">Full Name</label>
+                  <div className="login-input-wrap">
+                    <span className="login-input-icon"><UserIcon /></span>
+                    <input
+                      id="s-name"
+                      type="text"
+                      placeholder="Alex Johnson"
+                      autoComplete="name"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      tabIndex={isSignUp ? 0 : -1}
+                    />
+                  </div>
                 </div>
 
                 <div className="login-field">
                   <label htmlFor="s-email">University Email</label>
-                  <input
-                    id="s-email"
-                    type="email"
-                    placeholder="you@university.edu"
-                    autoComplete="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                  />
+                  <div className="login-input-wrap">
+                    <span className="login-input-icon"><MailIcon /></span>
+                    <input
+                      id="s-email"
+                      type="email"
+                      placeholder="you@university.edu"
+                      autoComplete="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="login-field">
                   <label htmlFor="s-pw">Password</label>
-                  <div className="login-field-row">
+                  <div className="login-input-wrap">
+                    <span className="login-input-icon"><LockIcon /></span>
                     <input
                       id="s-pw"
                       type={showPw ? "text" : "password"}
-                      placeholder="Enter your password"
-                      autoComplete="current-password"
+                      placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
                     />
                     <button type="button" className="login-pw-toggle" onClick={() => setShowPw(!showPw)}>
-                      {showPw ? "🙈" : "👁"}
+                      {showPw ? "Hide" : "Show"}
                     </button>
                   </div>
                 </div>
 
-                <div className="login-extras">
-                  <label className="login-chk-label">
-                    <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-                    Keep me signed in
-                  </label>
-                  <button type="button" className="login-forgot-link" onClick={e => e.preventDefault()}>Forgot password?</button>
-                </div>
+                {!isSignUp && (
+                  <div className="login-extras">
+                    <label className="login-chk-label">
+                      <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
+                      Keep me signed in
+                    </label>
+                    <button type="button" className="login-forgot-link" onClick={e => e.preventDefault()}>Forgot password?</button>
+                  </div>
+                )}
 
-                {error && <div className="login-error-msg">{error}</div>}
+                {error && <div className="login-error-msg"><span className="login-error-icon">!</span> {error}</div>}
 
-                <button type="submit" className="login-submit" disabled={loading} id="student-login-submit">
-                  {loading ? <div className="login-submit-spinner" /> : "Sign In as Student"}
-                </button>
-
-                <div className="login-or-row"><div className="login-or-line" /><span>or</span><div className="login-or-line" /></div>
-                <button type="button" className="login-google-btn" onClick={handleGoogle} disabled={loading}>
-                  <GoogleIcon /> Continue with Google
+                <button type="submit" className={`login-submit ${success ? 'login-submit--success' : ''}`} disabled={loading || googleLoading} id="student-login-submit">
+                  {loading ? (
+                    <div className="login-submit-spinner" />
+                  ) : success ? (
+                    <span className="login-success-check">✓</span>
+                  ) : (
+                    isSignUp ? "Create Account" : "Sign In as Student"
+                  )}
                 </button>
 
                 <div className="login-signup-row">
-                  New here?{" "}
-                  <button type="button" onClick={() => alert("Registration coming soon!")}>Create your student account</button>
+                  {isSignUp ? "Already have an account?" : "New here?"}{" "}
+                  <button type="button" onClick={toggleMode}>
+                    {isSignUp ? "Sign in instead" : "Create your student account"}
+                  </button>
                 </div>
 
                 <div className="login-sec-row">
-                  <div className="login-sec-dot" />
+                  <ShieldIcon />
                   Encrypted · FERPA Compliant
                 </div>
               </form>
@@ -253,9 +389,9 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* ③ PROFESSOR LOGIN */}
+        {/* ③ PROFESSOR LOGIN / SIGNUP */}
         {screen === "professor" && (
-          <div className="login-screen" key="professor">
+          <div className={`login-screen ${success ? 'login-screen--success' : ''}`} key="professor">
             <div className="login-wrap">
               <div className="login-side login-brand login-brand--professor">
                 <div className="brand-top">
@@ -281,69 +417,114 @@ export default function LoginPage() {
               </div>
 
               <form className="login-side login-form-side login-form-side--professor" onSubmit={handleSubmit}>
-                <button type="button" className="login-back-btn" onClick={() => goToScreen("picker")}>← Back to role select</button>
+                <button type="button" className="login-back-btn" onClick={() => goToScreen("picker")}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m15 18-6-6 6-6"/>
+                  </svg>
+                  Back to role select
+                </button>
                 <div className="login-form-header">
-                  <h2>Professor Sign In</h2>
-                  <p>Access your educator command center</p>
+                  <h2>{isSignUp ? "Create Educator Account" : "Professor Sign In"}</h2>
+                  <p>{isSignUp ? "Set up your educator command center" : "Access your educator command center"}</p>
+                </div>
+
+                {/* Google Sign-in — always visible */}
+                <button type="button" className="login-google-btn" onClick={handleGoogle} disabled={googleLoading || loading} id="professor-google-btn">
+                  {googleLoading ? (
+                    <div className="login-google-spinner" />
+                  ) : (
+                    <>
+                      <GoogleIcon />
+                      <span>Continue with Google Workspace</span>
+                    </>
+                  )}
+                </button>
+
+                <div className="login-or-row"><div className="login-or-line" /><span>or {isSignUp ? "sign up" : "sign in"} with email</span><div className="login-or-line" /></div>
+
+                {/* Name field — sign-up only */}
+                <div className={`login-field login-field--animate ${isSignUp ? 'login-field--visible' : 'login-field--hidden'}`}>
+                  <label htmlFor="p-name">Full Name</label>
+                  <div className="login-input-wrap">
+                    <span className="login-input-icon"><UserIcon /></span>
+                    <input
+                      id="p-name"
+                      type="text"
+                      placeholder="Dr. Jane Smith"
+                      autoComplete="name"
+                      value={name}
+                      onChange={e => setName(e.target.value)}
+                      tabIndex={isSignUp ? 0 : -1}
+                    />
+                  </div>
                 </div>
 
                 <div className="login-field">
                   <label htmlFor="p-email">Institutional Email</label>
-                  <input
-                    id="p-email"
-                    type="email"
-                    placeholder="prof@institution.edu"
-                    autoComplete="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                  />
+                  <div className="login-input-wrap">
+                    <span className="login-input-icon"><MailIcon /></span>
+                    <input
+                      id="p-email"
+                      type="email"
+                      placeholder="prof@institution.edu"
+                      autoComplete="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div className="login-field">
                   <label htmlFor="p-pw">Password</label>
-                  <div className="login-field-row">
+                  <div className="login-input-wrap">
+                    <span className="login-input-icon"><LockIcon /></span>
                     <input
                       id="p-pw"
                       type={showPw ? "text" : "password"}
-                      placeholder="Enter your password"
-                      autoComplete="current-password"
+                      placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
                     />
                     <button type="button" className="login-pw-toggle" onClick={() => setShowPw(!showPw)}>
-                      {showPw ? "🙈" : "👁"}
+                      {showPw ? "Hide" : "Show"}
                     </button>
                   </div>
                 </div>
 
-                <div className="login-extras">
-                  <label className="login-chk-label">
-                    <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
-                    Stay signed in
-                  </label>
-                  <button type="button" className="login-forgot-link" onClick={e => e.preventDefault()}>Reset password</button>
-                </div>
+                {!isSignUp && (
+                  <div className="login-extras">
+                    <label className="login-chk-label">
+                      <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
+                      Stay signed in
+                    </label>
+                    <button type="button" className="login-forgot-link" onClick={e => e.preventDefault()}>Reset password</button>
+                  </div>
+                )}
 
-                {error && <div className="login-error-msg">{error}</div>}
+                {error && <div className="login-error-msg"><span className="login-error-icon">!</span> {error}</div>}
 
-                <button type="submit" className="login-submit" disabled={loading} id="professor-login-submit">
-                  {loading ? <div className="login-submit-spinner" /> : "Sign In as Professor"}
-                </button>
-
-                <div className="login-or-row"><div className="login-or-line" /><span>or</span><div className="login-or-line" /></div>
-                <button type="button" className="login-google-btn" onClick={handleGoogle} disabled={loading}>
-                  <GoogleIcon /> Continue with Google Workspace
+                <button type="submit" className={`login-submit ${success ? 'login-submit--success' : ''}`} disabled={loading || googleLoading} id="professor-login-submit">
+                  {loading ? (
+                    <div className="login-submit-spinner" />
+                  ) : success ? (
+                    <span className="login-success-check">✓</span>
+                  ) : (
+                    isSignUp ? "Create Account" : "Sign In as Professor"
+                  )}
                 </button>
 
                 <div className="login-signup-row">
-                  New educator?{" "}
-                  <button type="button" onClick={() => alert("Institutional access request coming soon!")}>Request institutional access</button>
+                  {isSignUp ? "Already have access?" : "New educator?"}{" "}
+                  <button type="button" onClick={toggleMode}>
+                    {isSignUp ? "Sign in instead" : "Request institutional access"}
+                  </button>
                 </div>
 
                 <div className="login-sec-row">
-                  <div className="login-sec-dot" />
+                  <ShieldIcon />
                   SSO Ready · SOC 2 Compliant
                 </div>
               </form>

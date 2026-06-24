@@ -109,11 +109,11 @@ if __name__ == "__main__":
         local_ip = "unknown"
     port = Config.PORT
     db_label = "PostgreSQL" if _use_postgres else "SQLite (teamfit.db)"
-    print(f"🚀 TeamFit AI Backend running!")
-    print(f"📡 Local:   http://localhost:{port}/api")
-    print(f"📡 Network: http://{local_ip}:{port}/api")
-    print(f"❤️  Health:  http://localhost:{port}/api/health")
-    print("🔐 Auth: JWT (Bearer token)")
-    print(f"💾 Database: {db_label}")
-    print(f"🌐 CORS Origins: {Config.CORS_ORIGINS}")
+    print(f"[*] TeamFit AI Backend running!")
+    print(f"[>] Local:   http://localhost:{port}/api")
+    print(f"[>] Network: http://{local_ip}:{port}/api")
+    print(f"[+] Health:  http://localhost:{port}/api/health")
+    print("[#] Auth: JWT (Bearer token)")
+    print(f"[=] Database: {db_label}")
+    print(f"[~] CORS Origins: {Config.CORS_ORIGINS}")
     app.run(debug=Config.FLASK_DEBUG, port=port, host="0.0.0.0")
