@@ -7,15 +7,15 @@ The repository has a usable React/Flask prototype and now has safer authenticati
 | Area | Rating | Finding |
 | --- | ---: | --- |
 | Authentication and authorization | 6/10 | Passwords are hashed, JWTs expire, public registration is student-only, and professor routes require a professor token. Add login/registration throttling, account recovery, and token revocation before a wider launch. |
-| Code execution isolation | 6/10 | The app no longer executes submitted code in its own process; it fails closed and submits only to Judge0. A real provider, quotas, network policy, resource limits, and abuse controls must be configured and verified. |
+| Code execution isolation | 5/10 | The app now has a Render Sandboxes microVM execution path with deny-all egress and bounded guest commands. Render credentials, runtime availability, quotas, cost limits, and live behavior still need verification. |
 | Data and persistence | 4/10 | Production requires PostgreSQL, but schema setup still relies on `CREATE TABLE IF NOT EXISTS`; there are no versioned migrations, backup/restore checks, or PostgreSQL integration tests. |
 | Product correctness | 6/10 | Professor-owned exams, hidden test cases, student exam workspaces, marks, and leaderboard are now implemented. Scoring is deterministic test-case scoring, not AI grading. AI skill-gap explanations and email delivery are not configured; CSV export is available. |
 | Reliability and operations | 4/10 | Health checks cover database connectivity, but there is no observed deployment, monitoring/alerting, structured request correlation, rate limiting, or tested recovery procedure. |
-| Build and regression checks | 7/10 | CI now runs backend tests, frontend lint, and a production frontend build. Coverage is still small and currently exercises SQLite and mocked Judge0 responses rather than deployed PostgreSQL/provider integrations. |
+| Build and regression checks | 7/10 | CI runs backend tests, frontend lint, and a production frontend build. Coverage is still small and does not yet exercise deployed PostgreSQL or Render Sandbox integrations. |
 
 ## Changes made in this hardening pass
 
-- Replaced unsafe local code execution fallback with an authenticated, bounded Judge0 client. Provider failure returns an error instead of executing code in the web process.
+- Replaced Judge0 execution with an authenticated Render Sandbox adapter. Each question's test cases share one disposable network-disabled microVM; provider failure returns an error instead of executing code in the web process.
 - Added JWT expiry, password hashing and legacy password migration, student-only self-registration, verified Firebase token handling, and role checks on sensitive routes.
 - Added request-size and input validation, production startup configuration checks, database-aware health reporting, and session membership checks for activity writes.
 - Scoped session activity and contribution totals to each coding session.
@@ -26,10 +26,10 @@ The repository has a usable React/Flask prototype and now has safer authenticati
 
 ## Release blockers and next steps
 
-1. **Configure and verify the production services.** Set a strong `SECRET_KEY`, PostgreSQL `DATABASE_URL`, HTTPS `CORS_ORIGINS`, Firebase Admin credentials, and authenticated HTTPS Judge0 settings. Deploy to staging and run success, syntax error, compile error, timeout, output-limit, and provider-outage checks.
+1. **Configure and verify the production services.** Set a strong `SECRET_KEY`, PostgreSQL `DATABASE_URL`, HTTPS `CORS_ORIGINS`, Firebase Admin credentials, and Render Sandbox credentials. Deploy to staging and verify runtime availability, accepted/incorrect output, syntax/compile errors, timeouts, output limits, and provider outages.
 2. **Add database migrations and integration coverage.** Introduce a migration tool, migrate an existing database, run tests against PostgreSQL, and document backup/restore and rollback procedures.
-3. **Protect public endpoints and control costs.** Add shared rate limiting for authentication, AI, and code execution; cap Judge0 time, memory, concurrency, and daily usage; add abuse monitoring. Use a shared limiter store for multi-worker deployments.
-4. **Configure the exam services.** Set authenticated Judge0 credentials and Firebase project settings. The workspace autograder is unavailable until Judge0 is configured; Google sign-in is unavailable until Firebase web and Admin credentials are configured.
+3. **Protect public endpoints and control costs.** Add shared rate limiting for authentication, AI, and code execution; cap sandbox concurrency and daily usage; add abuse monitoring. Use a shared limiter store for multi-worker deployments.
+4. **Configure the exam services.** Set `RENDER_API_KEY`, `RENDER_WORKSPACE_ID`, and Firebase project settings on Render. The workspace autograder is unavailable until Render Sandboxes is configured; Google sign-in is unavailable until Firebase web and Admin credentials are configured.
 5. **Complete insight and report delivery.** Current individual notes are based on test outcomes and fixed explanations, not AI. Connect a grounded insight provider and a mail delivery service before advertising AI skill-gap analysis or emailed reports.
 6. **Operational readiness.** Add production deployment configuration, structured logs and request IDs, metrics/alerts, dependency update automation, incident/recovery runbooks, and an end-to-end staging smoke test.
 
@@ -38,5 +38,5 @@ The repository has a usable React/Flask prototype and now has safer authenticati
 - Backend unit/API tests: 14 passing, including isolated temporary-database tests for roles, exam lifecycle, hidden tests, scoring, and sandbox limits.
 - Frontend ESLint and Vite production build: passing for the dashboard and workspace refactor.
 - `npm install` reported zero vulnerabilities during dependency installation. A later standalone `npm audit` could not contact the npm audit endpoint because the environment returned `EAI_AGAIN`; rerun it in connected CI.
-- No live Judge0 service, Firebase production project, or PostgreSQL production environment was available for integration verification.
-- The browser audit initially found a stale Flask process returning 404 for `/api/student/dashboard`; it was restarted from this checkout. The live flow then passed professor exam creation and publishing, student exam discovery and join, problem/editor/leaderboard rendering, and visible failure when Judge0 is not configured. An end-to-end accepted submission still requires Judge0 credentials.
+- No Render Sandbox credentials or live sandbox were available for integration verification; Firebase production project and PostgreSQL environment were also unavailable.
+- The browser audit initially found a stale Flask process returning 404 for `/api/student/dashboard`; it was restarted from this checkout. The live flow then passed professor exam creation and publishing, student exam discovery and join, problem/editor/leaderboard rendering, and visible failure when the isolated runner is not configured. An end-to-end accepted submission still requires Render Sandbox credentials and live runtime verification.

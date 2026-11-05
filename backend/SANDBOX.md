@@ -1,56 +1,51 @@
-# Isolated code execution
+# Render Sandbox code execution
 
-TeamFit sends source code to Judge0. It never executes submitted Python,
-JavaScript, C, C++, or Java inside the Flask process. Judge0 runs submissions in
-its Isolate-based sandbox and returns compiler output, runtime output, exit
-status, time, and memory. The API validates language IDs and code size, requires
-a signed-in user, bounds the request and response sizes, and turns provider
-failures into HTTP 503 responses.
+Student code runs inside a disposable Render Sandbox microVM. The backend
+uploads only the source file and current test input, denies sandbox outbound
+network traffic, applies guest CPU, process, file-size, and wall-clock limits,
+relies on the sandbox VM memory plan, returns bounded output, and terminates the
+sandbox after the test run.
+All test cases for one question run sequentially in the same temporary sandbox.
 
-## Use the managed Judge0 endpoint
+## Backend configuration
 
-Set `JUDGE0_URL`, `JUDGE0_API_KEY`, and `JUDGE0_HOST` in `backend/.env`. Keep the
-API key only on the backend. Never add it to a `VITE_*` variable or commit it.
-The browser receives stdout/stderr, execution status, and safe resource
-statistics only. Each submission requests fixed limits of 2 seconds CPU, 5
-seconds wall time, 128,000 KB memory, 64,000 KB stack, 20 processes/threads,
-and 1,024 KB per file; it explicitly disables sandbox network access. Configure
-Judge0's allowed submission maxima to accept these values and enforce equal or
-tighter limits again in the isolated worker.
+Add these environment variables to the Flask service on Render:
 
-## Use self-hosted Judge0
-
-Deploy the official Judge0 CE release on a dedicated Linux host or isolated
-worker pool. Judge0's official deployment includes privileged server/worker
-containers for its Isolate sandbox; keep those workers away from the app host,
-restrict their network and cloud credentials, and follow Judge0's host/kernel
-requirements. Do not expose the Judge0 port publicly. Place it behind a private
-network and TLS proxy, configure its authorization header/token, and allow only
-the TeamFit backend to connect.
-
-Set the backend values:
-
-```dotenv
-JUDGE0_URL=https://judge0.internal.example
-JUDGE0_API_KEY=
-JUDGE0_AUTH_HEADER=X-Auth-User
-JUDGE0_AUTH_TOKEN=<the same secret configured in Judge0 AUTHZ_TOKEN>
+```text
+RENDER_API_KEY=<Render API key>
+RENDER_WORKSPACE_ID=<workspace ID that owns the sandboxes>
+# Optional: pin creation to a prepared group and runtime snapshot
+RENDER_SANDBOX_GROUP_ID=
+RENDER_SANDBOX_SNAPSHOT_ID=
 ```
 
-Set Judge0's `AUTHZ_HEADER` to the same header name and `AUTHZ_TOKEN` to the
-same secret. Keep the token in a secret manager in production. Change
-`X-Auth-User` if your Judge0 config uses a different header. This token is sent
-only on backend-to-backend requests.
+The API key must be created in Render Account Settings. Render currently does
+not generally offer scoped sandbox API keys or credential brokering, so the
+key may have broader workspace permissions than this feature needs. Keep it
+only in the backend's secret environment variables. Never put it in Vercel,
+frontend code, the sandbox environment, or chat. The backend should use a
+dedicated Render workspace for this integration where practical.
 
-## Error results
+No sandbox is created during deployment. Each authenticated execution creates
+one sandbox, waits for it to start, runs all test cases for that question,
+then terminates it. Sandboxes have a five-minute maximum lifetime as a cleanup
+backstop. Render may charge for active sandbox CPU and memory use. The default
+compute plan is 1 CPU and 2 GB RAM.
 
-The workspace displays Judge0's compiler output for compilation errors and
-stderr for syntax/runtime errors. The API also returns `error_type` values such
-as `syntax`, `compile`, `runtime`, `timeout`, and `memory`, plus a `truncated`
-flag when output exceeded the 32 KiB display limit. It does not infer that a
-program is correct just because it ran: assignment correctness requires
-explicit test cases, which this repository does not yet model.
+## Runtime availability
 
-Official references: [Judge0 source and deployment files](https://github.com/judge0/judge0),
-[Judge0 configuration](https://github.com/judge0/judge0/blob/master/judge0.conf),
-[Judge0 releases](https://github.com/judge0/judge0/releases).
+The execution adapter currently supports language IDs for C, C++, Java,
+JavaScript, and Python. Render's public Sandbox documentation does not promise
+that each runtime is present in the default image. If the default image is
+missing a compiler, prepare a sandbox with the required tools, capture a
+snapshot in the same sandbox group, and set both optional group/snapshot IDs.
+A missing compiler/runtime is returned in the test output. The adapter
+deliberately does not install packages at execution time or enable outbound
+network access for student code.
+
+## Local development
+
+The backend returns HTTP 503 for code execution until both environment
+variables are set and the Render sandbox SDK is installed. The required SDK
+version is pinned in `requirements.txt`. Keep the credentials out of `.env`
+files that could be committed.
