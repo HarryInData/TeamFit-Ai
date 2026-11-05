@@ -440,7 +440,7 @@ export default function LandingPage() {
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
-            Judge0 sandboxed
+            Render sandboxed
           </div>
           <div className="trust-item">
             <div
@@ -612,7 +612,7 @@ export default function LandingPage() {
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               </svg>
             </div>
-            Judge0 sandboxed
+            Render sandboxed
           </div>
           <div className="trust-item">
             <div
@@ -998,7 +998,7 @@ export default function LandingPage() {
         <div className="footer-logo">
           Team<em>Fit</em> AI
         </div>
-        <div className="footer-text">React · Flask · Monaco · Judge0</div>
+        <div className="footer-text">React · Flask · Monaco · Render Sandboxes</div>
         <div className="footer-text">© 2026 TeamFit</div>
       </footer>
     </main>
