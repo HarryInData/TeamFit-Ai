@@ -104,6 +104,19 @@ def execute_code(source_code: str, language_id: int = 71, stdin: str = "",
     }
 
 
+def execute_code_cases(source_code: str, language_id: int,
+                       cases: list[tuple[str, str]]) -> list[dict]:
+    """Run a bounded list of test cases through Judge0's isolated workers."""
+    if not isinstance(cases, list) or not cases:
+        raise ValueError("At least one test case is required")
+    if len(cases) > 50:
+        raise ValueError("A maximum of 50 test cases can be run at once")
+    results = []
+    for stdin, expected_output in cases:
+        results.append(execute_code(source_code, language_id, stdin, expected_output))
+    return results
+
+
 def _error_type(status: str, stderr: str = "") -> str | None:
     normalized = status.lower()
     error_text = stderr.lower()
