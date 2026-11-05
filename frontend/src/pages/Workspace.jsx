@@ -23,6 +23,30 @@ function writeDraft(sessionId, questionId, languageId, code) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
 }
 
+function getConsoleOutput(result) {
+  if (result?.stdout) return result.stdout;
+  const caseOutput = (result?.test_results || [])
+    .filter((test) => test.stdout)
+    .map((test) => `[Test case ${test.case}]\n${test.stdout}`)
+    .join('\n');
+  if (caseOutput) return caseOutput;
+  return result?.stderr || result?.error || 'The program finished without writing to standard output.';
+}
+
+function getExecutionErrors(result) {
+  const failedCases = (result?.test_results || []).filter((test) => !test.passed);
+  const details = failedCases.map((test) => {
+    const kind = test.error_type || test.status || 'Failed';
+    const message = test.stderr || (test.status === 'Wrong Answer'
+      ? 'The program ran, but its output did not match the expected output.'
+      : 'The test case failed without additional error details.');
+    return `[Test case ${test.case} · ${kind}]\n${message}`;
+  });
+  if (result?.stderr && !details.length) details.push(result.stderr);
+  if (result?.error) details.push(result.error);
+  return details.join('\n\n') || 'No errors were reported for the visible test cases.';
+}
+
 export default function Workspace() {
   const { user, logout, sessionId, sessionCode, clearSession } = useAuth();
   const { theme } = useTheme();
@@ -167,14 +191,21 @@ export default function Workspace() {
           <Editor key={`${activeQuestion?.id}-${selectedLang.id}`} height="100%" language={selectedLang.monaco} value={code} onChange={(value) => setDrafts((current) => ({ ...current, [codeKey]: value || '' }))} theme={theme === 'dark' ? 'vs-dark' : 'vs'} options={{ fontSize: 14, fontFamily: "'JetBrains Mono', monospace", minimap: { enabled: false }, lineNumbers: 'on', scrollBeyondLastLine: false, padding: { top: 16 }, renderLineHighlight: 'gutter', smoothScrolling: true, automaticLayout: true, tabSize: 4 }} />
         </div>
         <div className="exam-output-panel">
-          <div className="exam-output-tabs">{[['tests','Test results'],['output','Console output'],['errors','Errors']].map(([id,label]) => <button key={id} className={consoleTab === id ? 'is-active' : ''} onClick={() => setConsoleTab(id)}>{label}{id === 'tests' && output?.test_results?.length ? ` (${output.test_results.filter((item) => item.passed).length}/${output.test_results.length})` : ''}</button>)}</div>
+          <div className="exam-output-tabs">{[['tests','Test results'],['output','Console output'],['errors','Errors']].map(([id,label]) => {
+            const failedCount = output?.test_results?.filter((test) => !test.passed).length || 0;
+            const errorCount = failedCount + (output?.error || (output?.stderr && !failedCount) ? 1 : 0);
+            const count = id === 'tests' && output?.test_results?.length
+              ? ` (${output.test_results.filter((item) => item.passed).length}/${output.test_results.length})`
+              : id === 'errors' && errorCount ? ` (${errorCount})` : '';
+            return <button key={id} className={consoleTab === id ? 'is-active' : ''} onClick={() => setConsoleTab(id)}>{label}{count}</button>;
+          })}</div>
           <div className="exam-output-content" aria-live="polite">
-            {running ? <p className="exam-output-muted">Executing in the isolated code runner…</p> : !output ? <p className="exam-output-muted">Run your solution to see execution results. Hidden test inputs and expected answers stay private.</p> : consoleTab === 'tests' ? <>
+            {running ? <p className="exam-output-muted">Compiling and running your code…</p> : !output ? <p className="exam-output-muted">Run your solution to see program output, compiler diagnostics, and public test results. Hidden test inputs and expected answers stay private.</p> : consoleTab === 'tests' ? <>
               <div className={`exam-result-summary ${output.status === 'Accepted' ? 'is-pass' : output.status === 'Partial' ? 'is-partial' : 'is-fail'}`}><strong>{output.status === 'Accepted' ? 'All available tests passed' : output.status === 'Partial' ? 'Some tests passed' : output.status || 'Execution failed'}</strong>{output.score !== undefined && <span>{output.score}/{output.max_score} points · {output.passed_tests}/{output.total_tests} passed</span>}</div>
               {(output.test_results || []).map((test, index) => <div className="exam-test-result" key={`${test.case || index}-${index}`}><span className={test.passed ? 'test-check' : 'test-fail'}>{test.passed ? '✓' : '!'}</span><span>Test case {test.case || index + 1}</span><strong>{test.passed ? 'Passed' : test.status || 'Failed'}</strong>{test.error_type && <small>{test.error_type}</small>}</div>)}
               {output.error && <p className="exam-output-error">{output.error}</p>}
-              {output.test_results?.some((test) => test.stderr) && <pre className="exam-console-text">{output.test_results.filter((test) => test.stderr).map((test) => test.stderr).join('\n')}</pre>}
-            </> : consoleTab === 'output' ? <pre className="exam-console-text">{output.stdout || output.stderr || output.error || 'No console output was returned by the runner.'}</pre> : <pre className="exam-console-text exam-output-error">{output.test_results?.filter((test) => test.error_type || test.stderr).map((test) => `Test ${test.case}: ${test.error_type || ''}\n${test.stderr || ''}`).join('\n\n') || output.error || 'No execution errors.'}</pre>}
+              {output.test_results?.some((test) => test.truncated) && <p className="exam-output-muted">Some output was shortened to fit the result panel.</p>}
+            </> : consoleTab === 'output' ? <pre className="exam-console-text">{getConsoleOutput(output)}</pre> : <pre className="exam-console-text exam-output-error">{getExecutionErrors(output)}</pre>}
           </div>
         </div>
       </section>
