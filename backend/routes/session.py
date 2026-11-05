@@ -2,14 +2,14 @@
 Session Routes — Create, Join, Stats
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, g
 from models.database import (
     create_session, join_session, get_session_members,
     get_session_by_code, get_all_sessions, get_all_students,
     auto_idle_stale_students
 )
 from services.ai_summary import generate_ai_summary
-from middleware.auth import jwt_required, jwt_optional
+from middleware.auth import jwt_required, roles_required
 
 session_bp = Blueprint("session", __name__)
 
@@ -19,9 +19,16 @@ session_bp = Blueprint("session", __name__)
 def create():
     """Create a new coding session."""
     from flask import g
-    data = request.get_json() or {}
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
     user_name = g.current_user.get("name", "Unknown")
     title = data.get("title", "Coding Session")
+    if not isinstance(title, str) or not title.strip() or len(title.strip()) > 120:
+        return jsonify({"error": "Session title must be between 1 and 120 characters"}), 400
+    title = title.strip()
 
     session = create_session(created_by=user_name, title=title)
 
@@ -39,13 +46,14 @@ def create():
 def join():
     """Join an existing session by code or ID."""
     from flask import g
-    data = request.get_json()
-    if not data:
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
         return jsonify({"error": "Request body required"}), 400
 
     user_name = g.current_user.get("name", "Unknown")
     session_id = data.get("session_id")
-    join_code = data.get("join_code", "").strip().upper()
+    join_code_value = data.get("join_code", "")
+    join_code = join_code_value.strip().upper() if isinstance(join_code_value, str) else ""
 
     if not session_id and not join_code:
         return jsonify({"error": "session_id or join_code required"}), 400
@@ -71,13 +79,15 @@ def join():
 
 
 @session_bp.route("/session/<session_id>/stats", methods=["GET"])
-@jwt_optional
+@jwt_required
 def session_stats(session_id):
     """Get real-time stats for a session."""
     # Auto-idle stale users
     auto_idle_stale_students(timeout_seconds=10)
 
     members = get_session_members(session_id)
+    if not any(m["user_name"] == g.current_user.get("name") for m in members):
+        return jsonify({"error": "Session not found"}), 404
 
     if not members:
         return jsonify({"error": "Session not found or empty"}), 404
@@ -113,10 +123,12 @@ def session_stats(session_id):
 
 
 @session_bp.route("/session/<session_id>/members", methods=["GET"])
-@jwt_optional
+@jwt_required
 def session_members(session_id):
     """List members in a session."""
     members = get_session_members(session_id)
+    if not any(m["user_name"] == g.current_user.get("name") for m in members):
+        return jsonify({"error": "Session not found"}), 404
     return jsonify({
         "session_id": session_id,
         "members": [
@@ -129,7 +141,7 @@ def session_members(session_id):
 
 
 @session_bp.route("/sessions", methods=["GET"])
-@jwt_optional
+@roles_required("professor")
 def list_sessions():
     """List all sessions (for professor dashboard)."""
     sessions = get_all_sessions()

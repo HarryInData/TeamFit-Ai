@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/auth";
 import HeroSection from "./pages/HeroSection";
 import LoginPage from "./pages/LoginPage";
 import SessionLobby from "./pages/SessionLobby";
@@ -7,11 +8,12 @@ import Workspace from "./pages/Workspace";
 import Dashboard from "./pages/Dashboard";
 import LandingPage from "./pages/LandingPage";
 
-function ProtectedRoute({ children, allowedRole }) {
-  const { user, loading } = useAuth();
+function ProtectedRoute({ children, allowedRole, requireSession = false }) {
+  const { user, loading, sessionId } = useAuth();
 
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
+  if (requireSession && user.role === 'student' && !sessionId) return <Navigate to="/session" replace />;
   if (allowedRole && user.role !== allowedRole) {
     return (
       <Navigate
@@ -82,7 +84,7 @@ function AppRoutes() {
       <Route
         path="/workspace"
         element={
-          <ProtectedRoute allowedRole="student">
+          <ProtectedRoute allowedRole="student" requireSession>
             <Workspace />
           </ProtectedRoute>
         }

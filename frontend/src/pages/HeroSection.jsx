@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion';
-
 /* ═══════════════════════════════════════════
    HERO SECTION — TeamFit AI
    Premium landing hero with glassmorphism,

@@ -10,9 +10,10 @@ import os
 import logging
 import threading
 import uuid
-import random
+import secrets
 import string
 from datetime import datetime
+from werkzeug.security import generate_password_hash
 
 logger = logging.getLogger("teamfit")
 
@@ -48,9 +49,12 @@ def get_db():
             conn = psycopg2.connect(DATABASE_URL)
             conn.autocommit = False
             return conn
-        except Exception as e:
-            logger.error(f"PostgreSQL connection failed: {e}. Falling back to SQLite.")
-            # Fall through to SQLite
+        except Exception:
+            logger.exception("PostgreSQL connection failed")
+            from config import Config
+            if Config.IS_PRODUCTION:
+                raise
+            # In development only, allow local SQLite as a convenience.
     # SQLite fallback
     import sqlite3
     conn = sqlite3.connect(_SQLITE_PATH, check_same_thread=False)
@@ -158,6 +162,16 @@ def init_db():
                 keystrokes INTEGER NOT NULL,
                 activity TEXT DEFAULT 'idle',
                 logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS session_activity (
+                session_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                keystrokes INTEGER NOT NULL DEFAULT 0,
+                activity TEXT NOT NULL DEFAULT 'idle',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY(session_id, user_name)
             )
         """)
     else:
@@ -208,6 +222,15 @@ def init_db():
                 activity TEXT DEFAULT 'idle',
                 logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS session_activity (
+                session_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                keystrokes INTEGER NOT NULL DEFAULT 0,
+                activity TEXT NOT NULL DEFAULT 'idle',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY(session_id, user_name)
+            );
         """)
 
     cur.close()
@@ -224,6 +247,10 @@ def init_db():
 
 def seed_users():
     """Seed demo users if they don't exist."""
+    from config import Config
+    if Config.IS_PRODUCTION:
+        logger.info("Skipping demo account seeding in production")
+        return
     conn = get_db()
 
     demo_users = [
@@ -235,6 +262,7 @@ def seed_users():
     ]
 
     for uid, name, email, pwd, role, avatar in demo_users:
+        pwd = generate_password_hash(pwd)
         if _use_postgres:
             _execute(conn,
                 f"INSERT INTO users (id, name, email, password, role, avatar) VALUES ({_ph(6)}) ON CONFLICT DO NOTHING",
@@ -257,6 +285,20 @@ def get_user_by_email(email: str) -> dict:
     return row
 
 
+def get_user_by_name(name: str) -> dict:
+    conn = get_db()
+    row = _fetchone(conn, f"SELECT id FROM users WHERE lower(name) = {_ph()}", (name.lower(),))
+    conn.close()
+    return row
+
+
+def update_user_password(email: str, password_hash: str):
+    conn = get_db()
+    _execute(conn, f"UPDATE users SET password = {_ph()} WHERE email = {_ph()}", (password_hash, email))
+    conn.commit()
+    conn.close()
+
+
 def create_user(uid: str, name: str, email: str, password: str, role: str) -> dict:
     with _db_lock:
         conn = get_db()
@@ -276,6 +318,10 @@ def create_user(uid: str, name: str, email: str, password: str, role: str) -> di
 
 def seed_students():
     """Seed demo students if they don't exist."""
+    from config import Config
+    if Config.IS_PRODUCTION:
+        logger.info("Skipping demo student seeding in production")
+        return
     conn = get_db()
 
     demo_students = [
@@ -359,6 +405,8 @@ def delete_student(name: str) -> bool:
         cur = _execute(conn, f"DELETE FROM students WHERE name = {_ph()}", (name,))
         affected = cur.rowcount
         cur.close()
+        _execute(conn, f"DELETE FROM keystroke_log WHERE student_name = {_ph()}", (name,))
+        _recalculate_contributions(conn)
         conn.commit()
         conn.close()
         return affected > 0
@@ -369,11 +417,10 @@ def _recalculate_contributions(conn):
     row = _fetchone(conn, "SELECT SUM(keystrokes) as total FROM students")
     total = (row["total"] if row else 0) or 0
 
-    if total > 0:
-        students = _fetchall(conn, "SELECT name, keystrokes FROM students")
-        for s in students:
-            contrib = round((s["keystrokes"] / total) * 100, 1)
-            _execute(conn, f"UPDATE students SET contribution = {_ph()} WHERE name = {_ph()}", (contrib, s["name"]))
+    students = _fetchall(conn, "SELECT name, keystrokes FROM students")
+    for s in students:
+        contrib = round((s["keystrokes"] / total) * 100, 1) if total > 0 else 0
+        _execute(conn, f"UPDATE students SET contribution = {_ph()} WHERE name = {_ph()}", (contrib, s["name"]))
     conn.commit()
 
 
@@ -398,13 +445,14 @@ def auto_idle_stale_students(timeout_seconds: int = 10):
             _execute(conn,
                 f"""UPDATE students SET activity = 'idle'
                    WHERE activity != 'idle'
-                   AND updated_at < NOW() - INTERVAL '{timeout_seconds} seconds'""",
+                   AND updated_at < NOW() - ({_ph()} * INTERVAL '1 second')""",
+                (timeout_seconds,),
             )
         else:
             _execute(conn,
                 f"""UPDATE students SET activity = 'idle'
                    WHERE activity != 'idle'
-                   AND updated_at < datetime('now', {_ph()} || ' seconds')""",
+                   AND julianday(updated_at) < julianday('now', {_ph()} || ' seconds')""",
                 (f"-{timeout_seconds}",),
             )
         conn.commit()
@@ -439,15 +487,15 @@ def get_keystroke_history(student_name: str = None, limit: int = 50) -> list:
 
 
 def _generate_join_code():
-    """Generate a 6-char alphanumeric join code like TF-A3K9."""
+    """Generate an 8-character cryptographically random join code."""
     chars = string.ascii_uppercase + string.digits
-    code = "TF-" + "".join(random.choices(chars, k=4))
+    code = "TF-" + "".join(secrets.choice(chars) for _ in range(8))
     return code
 
 
 def create_session(created_by: str, title: str = "Coding Session") -> dict:
     """Create a new session with a unique join code."""
-    session_id = str(uuid.uuid4())[:8]
+    session_id = str(uuid.uuid4())
     join_code = _generate_join_code()
 
     with _db_lock:
@@ -528,15 +576,54 @@ def get_session_members(session_id: str) -> list:
     conn = get_db()
     rows = _fetchall(conn,
         f"""SELECT sm.user_name, sm.role, sm.joined_at,
-                  s.keystrokes, s.activity, s.contribution
+                  COALESCE(sa.keystrokes, 0) AS keystrokes,
+                  COALESCE(sa.activity, 'idle') AS activity
            FROM session_members sm
-           LEFT JOIN students s ON sm.user_name = s.name
+           LEFT JOIN session_activity sa
+             ON sa.session_id = sm.session_id AND sa.user_name = sm.user_name
            WHERE sm.session_id = {_ph()}
            ORDER BY sm.joined_at ASC""",
         (session_id,),
     )
     conn.close()
+    total = sum(row.get("keystrokes", 0) or 0 for row in rows)
+    for row in rows:
+        row["contribution"] = round((row.get("keystrokes", 0) / total) * 100, 1) if total else 0
     return rows
+
+
+def record_session_activity(session_id: str, user_name: str, keystrokes: int, activity: str) -> bool:
+    """Increment activity only for a user who is a member of that session."""
+    with _db_lock:
+        conn = get_db()
+        membership = _fetchone(conn,
+            f"SELECT 1 FROM session_members WHERE session_id = {_ph()} AND user_name = {_ph()}",
+            (session_id, user_name),
+        )
+        if not membership:
+            conn.close()
+            return False
+        if _use_postgres:
+            _execute(conn,
+                f"""INSERT INTO session_activity (session_id, user_name, keystrokes, activity, updated_at)
+                   VALUES ({_ph(4)}, {_ph()})
+                   ON CONFLICT (session_id, user_name) DO UPDATE SET
+                   keystrokes = session_activity.keystrokes + EXCLUDED.keystrokes,
+                   activity = EXCLUDED.activity, updated_at = CURRENT_TIMESTAMP""",
+                (session_id, user_name, keystrokes, activity, datetime.utcnow()),
+            )
+        else:
+            _execute(conn,
+                f"""INSERT INTO session_activity (session_id, user_name, keystrokes, activity, updated_at)
+                   VALUES ({_ph(5)})
+                   ON CONFLICT(session_id, user_name) DO UPDATE SET
+                   keystrokes = session_activity.keystrokes + excluded.keystrokes,
+                   activity = excluded.activity, updated_at = excluded.updated_at""",
+                (session_id, user_name, keystrokes, activity, datetime.utcnow().isoformat()),
+            )
+        conn.commit()
+        conn.close()
+    return True
 
 
 def get_session_by_code(join_code: str) -> dict:

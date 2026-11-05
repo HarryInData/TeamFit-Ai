@@ -11,9 +11,14 @@ chmod +x start.sh
 ./start.sh
 ```
 
-This starts both the Flask backend (`:5000`) and React frontend (`:5173`).
+This starts both the Flask backend (`:5001`) and React frontend (`:5173`).
+Create `backend/.env` from `backend/.env.example` first. Code execution requires
+a configured isolated Judge0 service; without it, the backend returns a service
+unavailable error and never executes source code locally.
 
-## Demo Accounts
+## Development Demo Accounts
+
+These seeded accounts are for local development only. They are not created in production.
 
 | Role | Email | Password |
 |------|-------|----------|
@@ -24,7 +29,7 @@ This starts both the Flask backend (`:5000`) and React frontend (`:5173`).
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 18 + Vite |
+| Frontend | React 19 + Vite |
 | Backend | Flask (Python) |
 | Code Execution | Judge0 API |
 | Styling | Vanilla CSS (design tokens) |
@@ -56,8 +61,8 @@ TEAMFITAI/
 | POST | `/api/auth/register` | Register new user |
 | GET | `/api/students` | List all students |
 | POST | `/api/students` | Create/update student |
-| POST | `/api/execute` | Execute code via Judge0 |
-| GET | `/api/dashboard` | Professor analytics data |
+| POST | `/api/execute` | Run code in isolated Judge0 (authenticated) |
+| GET | `/api/dashboard` | Professor analytics data (professor role required) |
 | GET | `/api/health` | Health check |
 
 ## Global API Contract
@@ -70,3 +75,12 @@ TEAMFITAI/
   "activity": "string"
 }
 ```
+
+## Production configuration
+
+Set `APP_ENV=production`, a random `SECRET_KEY` of at least 32 characters,
+PostgreSQL `DATABASE_URL`, and explicit HTTPS frontend origins in
+`CORS_ORIGINS`. Configure Firebase Admin credentials for Google sign-in and
+configure Judge0 as described in [backend/SANDBOX.md](backend/SANDBOX.md).
+Production startup fails when required secret/database/CORS configuration is
+missing. Run the app with Gunicorn behind a TLS-terminating reverse proxy.

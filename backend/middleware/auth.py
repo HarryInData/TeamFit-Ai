@@ -6,6 +6,7 @@ Protects routes with Bearer token authentication.
 """
 
 import jwt
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import request, jsonify, g
 from config import Config
@@ -18,6 +19,8 @@ def create_token(user: dict) -> str:
         "name": user["name"],
         "email": user["email"],
         "role": user["role"],
+        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=Config.TOKEN_TTL_SECONDS),
     }
     return jwt.encode(payload, Config.SECRET_KEY, algorithm="HS256")
 
@@ -67,3 +70,16 @@ def jwt_optional(f):
         return f(*args, **kwargs)
 
     return decorated
+
+
+def roles_required(*roles):
+    """Require a valid JWT and one of the listed roles."""
+    def decorate(f):
+        @wraps(f)
+        @jwt_required
+        def wrapped(*args, **kwargs):
+            if g.current_user.get("role") not in roles:
+                return jsonify({"error": "Insufficient permissions"}), 403
+            return f(*args, **kwargs)
+        return wrapped
+    return decorate

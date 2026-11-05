@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/auth';
 import { getDashboard, generateReport, getStudents, getAIInsights } from '../services/api';
 import './Dashboard.css';
 
@@ -29,9 +29,14 @@ function getBadge(contribution) {
 }
 
 // Convert **markdown bold** to <strong>html</strong>
-function mdToHtml(text) {
+function renderRichText(text) {
   if (!text) return '';
-  return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
 }
 
 export default function Dashboard() {
@@ -113,7 +118,7 @@ export default function Dashboard() {
       a.click();
       URL.revokeObjectURL(url);
       alert('Report downloaded successfully!');
-    } catch (err) {
+    } catch {
       alert('Failed to generate report. Is the backend running?');
     }
   }
@@ -171,17 +176,17 @@ export default function Dashboard() {
           </div>
           <div className="dash-stat-card">
             <div className="dash-stat-label">Active Today</div>
-            <div className="dash-stat-value">{Math.max(1, data.total_students - 1)}</div>
+            <div className="dash-stat-value">{data.active_count}</div>
           </div>
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Average Score</div>
+            <div className="dash-stat-label">Average Latest Run Score</div>
             <div className="dash-stat-value">{data.average_score || 0}</div>
           </div>
         </div>
 
         <div className="dash-ai-section">
           <h3 className="dash-ai-title">✦ Quick Summary</h3>
-          <p className="dash-ai-text" dangerouslySetInnerHTML={{ __html: mdToHtml(data.ai_summary) || 'No summary available yet.' }} />
+          <p className="dash-ai-text">{renderRichText(data.ai_summary) || 'No summary available yet.'}</p>
         </div>
       </div>
     );
@@ -341,7 +346,7 @@ export default function Dashboard() {
         {/* Stat Cards */}
         <div className="dash-stat-row">
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Total Contribution Score</div>
+            <div className="dash-stat-label">Average Latest Run Score</div>
             <div className="dash-stat-value">
               {Math.round(data.average_score * 0.87 + 13)}%
               <span className="dash-stat-delta dash-stat-delta--up">+12.5% vs avg</span>
@@ -349,8 +354,8 @@ export default function Dashboard() {
             <div className="dash-stat-icon">📊</div>
           </div>
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Team Efficiency Score</div>
-            <div className="dash-stat-value dash-stat-value--text">High</div>
+            <div className="dash-stat-label">Active Member Rate</div>
+            <div className="dash-stat-value dash-stat-value--text">{data.team_efficiency}%</div>
             <div className="dash-stat-bar-wrap">
               <div className="dash-stat-bar">
                 <div className="dash-stat-bar-fill" style={{ width: `${data.team_efficiency}%` }} />
@@ -360,8 +365,7 @@ export default function Dashboard() {
           </div>
           <div className="dash-stat-card">
             <div className="dash-stat-label">Active Time</div>
-            <div className="dash-stat-value">{data.active_time}</div>
-            <div className="dash-stat-sub">Daily peak active at 14:00 - 16:30</div>
+            <div className="dash-stat-value">{data.active_time ?? 'Not tracked'}</div>
           </div>
         </div>
 
@@ -373,7 +377,7 @@ export default function Dashboard() {
           </div>
           <div className="dash-ai-content">
             <div className="dash-ai-text-col">
-              <p className="dash-ai-text" dangerouslySetInnerHTML={{ __html: mdToHtml(data.ai_summary) || '' }} />
+              <p className="dash-ai-text">{renderRichText(data.ai_summary)}</p>
             </div>
           </div>
         </div>
@@ -388,16 +392,15 @@ export default function Dashboard() {
         {/* Stat Cards */}
         <div className="dash-stat-row">
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Total Contribution Score</div>
+            <div className="dash-stat-label">Average Latest Run Score</div>
             <div className="dash-stat-value">
-              {Math.round(data.average_score * 0.87 + 13)}%
-              <span className="dash-stat-delta dash-stat-delta--up">+12.5% vs avg</span>
+              {data.average_score}%
             </div>
             <div className="dash-stat-icon">📊</div>
           </div>
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Team Efficiency Score</div>
-            <div className="dash-stat-value dash-stat-value--text">High</div>
+            <div className="dash-stat-label">Active Member Rate</div>
+            <div className="dash-stat-value dash-stat-value--text">{data.team_efficiency}%</div>
             <div className="dash-stat-bar-wrap">
               <div className="dash-stat-bar">
                 <div className="dash-stat-bar-fill" style={{ width: `${data.team_efficiency}%` }} />
@@ -407,13 +410,7 @@ export default function Dashboard() {
           </div>
           <div className="dash-stat-card">
             <div className="dash-stat-label">Active Time</div>
-            <div className="dash-stat-value">{data.active_time}</div>
-            <div className="dash-stat-sub">Daily peak active at 14:00 - 16:30</div>
-            <div className="dash-mini-bars">
-              {[3, 5, 2, 6, 4, 7, 5].map((h, i) => (
-                <div key={i} className="dash-mini-bar" style={{ height: `${h * 5}px` }} />
-              ))}
-            </div>
+            <div className="dash-stat-value">{data.active_time ?? 'Not tracked'}</div>
           </div>
         </div>
 
@@ -512,7 +509,7 @@ export default function Dashboard() {
           </div>
           <div className="dash-ai-content">
             <div className="dash-ai-text-col">
-              <p className="dash-ai-text" dangerouslySetInnerHTML={{ __html: mdToHtml(data.ai_summary) || '' }} />
+              <p className="dash-ai-text">{renderRichText(data.ai_summary)}</p>
               {data.ai_alerts?.map((alert, i) => (
                 <div key={i} className={`dash-alert dash-alert--${alert.type}`}>
                   <div className="dash-alert-icon">{alert.type === 'warning' ? '⚠' : '💡'}</div>
@@ -526,17 +523,17 @@ export default function Dashboard() {
             <div className="dash-velocity">
               <h4 className="dash-velocity-title">Sprint Velocity</h4>
               {[
-                { label: 'Overall Progress', value: data.sprint_velocity?.overall_progress || 0 },
-                { label: 'Code Quality', value: data.sprint_velocity?.code_quality || 0 },
-                { label: 'Peer Sentiment', value: data.sprint_velocity?.peer_sentiment || 0 },
+                { label: 'Overall Progress', value: data.sprint_velocity?.overall_progress },
+                { label: 'Code Quality', value: data.sprint_velocity?.code_quality },
+                { label: 'Peer Sentiment', value: data.sprint_velocity?.peer_sentiment },
               ].map((m) => (
                 <div key={m.label} className="dash-velocity-row">
                   <div className="dash-velocity-meta">
                     <span>{m.label}</span>
-                    <span>{m.value}%</span>
+                    <span>{m.value == null ? 'Not available' : `${m.value}%`}</span>
                   </div>
                   <div className="dash-velocity-bar">
-                    <div className="dash-velocity-fill" style={{ width: `${m.value}%` }} />
+                    <div className="dash-velocity-fill" style={{ width: `${m.value || 0}%` }} />
                   </div>
                 </div>
               ))}
@@ -719,9 +716,7 @@ export default function Dashboard() {
             <div className="dash-ai-content">
               <div className="dash-ai-text-col">
                 {aiInsights.insights.split('\n\n').map((paragraph, i) => (
-                  <p key={i} className="dash-ai-text" dangerouslySetInnerHTML={{
-                    __html: paragraph.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  }} />
+                  <p key={i} className="dash-ai-text">{renderRichText(paragraph)}</p>
                 ))}
               </div>
             </div>
@@ -740,36 +735,12 @@ export default function Dashboard() {
 
   // ── Skill Gap Tab ──
   function renderSkillGapTab() {
-    const skills = [
-      { name: 'Python Syntax', avg: 82 },
-      { name: 'Data Structures', avg: 65 },
-      { name: 'File I/O', avg: 45 },
-      { name: 'Error Handling', avg: 58 },
-      { name: 'OOP Concepts', avg: 38 },
-    ];
     return (
       <div className="dash-perf-section">
         <h3 className="dash-section-title">Skill Gap Analysis</h3>
         <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-lg)' }}>
-          Based on code submissions and execution patterns across all team members.
+          Skill-level data is not collected yet. Track outcomes by learning objective to show this analysis.
         </p>
-        {skills.map((skill) => (
-          <div key={skill.name} className="dash-velocity-row" style={{ marginBottom: 'var(--space-md)' }}>
-            <div className="dash-velocity-meta">
-              <span>{skill.name}</span>
-              <span>{skill.avg}%</span>
-            </div>
-            <div className="dash-velocity-bar">
-              <div
-                className="dash-velocity-fill"
-                style={{
-                  width: `${skill.avg}%`,
-                  background: skill.avg >= 70 ? 'var(--color-success)' : skill.avg >= 50 ? 'var(--color-warning)' : 'var(--color-danger)',
-                }}
-              />
-            </div>
-          </div>
-        ))}
       </div>
     );
   }
@@ -780,28 +751,8 @@ export default function Dashboard() {
       <div className="dash-perf-section">
         <h3 className="dash-section-title">Peer Review</h3>
         <p style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--space-lg)' }}>
-          Anonymous peer feedback collected from team members.
+          Peer review data has not been collected for this project.
         </p>
-        <div className="dash-perf-grid">
-          {data.students?.map((s, i) => (
-            <div key={s.student} className="dash-perf-card">
-              <div className="dash-perf-top">
-                <div className="dash-perf-avatar" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }}>
-                  {s.student.charAt(0)}
-                </div>
-                <div>
-                  <div className="dash-perf-name">{s.student}</div>
-                  <div className="dash-perf-role">Avg rating: {(3 + Math.random() * 2).toFixed(1)}/5</div>
-                </div>
-              </div>
-              <div className="dash-perf-bottom">
-                <span style={{ color: 'var(--color-text-muted)', fontSize: 'var(--font-size-xs)' }}>
-                  "{s.student} is collaborative and communicates well."
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     );
   }

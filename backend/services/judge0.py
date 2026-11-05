@@ -1,192 +1,108 @@
+"""Isolated source-code execution through a Judge0 sandbox.
+
+There is deliberately no local interpreter fallback: application processes must
+never execute student-controlled source code with their own operating-system
+privileges.
+"""
+
 import requests
-import time
 from config import Config
+
+SUPPORTED_LANGUAGES = {50, 54, 62, 63, 71}
+MAX_SOURCE_BYTES = 64 * 1024
+MAX_STDOUT_BYTES = 32 * 1024
+MAX_STDERR_BYTES = 32 * 1024
+
+
+class ExecutionUnavailable(Exception):
+    """The isolated execution provider is not configured or reachable."""
 
 
 def execute_code(source_code: str, language_id: int = 71) -> dict:
-    """
-    Submit code to Judge0 CE and return the result.
-    Uses ?wait=true for synchronous execution (simpler for hackathon).
-    """
-    headers = {
-        "Content-Type": "application/json",
-        "X-RapidAPI-Key": Config.JUDGE0_API_KEY,
-        "X-RapidAPI-Host": Config.JUDGE0_HOST,
-    }
+    """Run code in Judge0 and normalize syntax, compile, and runtime errors."""
+    if not isinstance(source_code, str) or not source_code.strip():
+        raise ValueError("Code cannot be empty")
+    if len(source_code.encode("utf-8")) > MAX_SOURCE_BYTES:
+        raise ValueError("Code is too large (maximum 64 KiB)")
+    if isinstance(language_id, bool) or language_id not in SUPPORTED_LANGUAGES:
+        raise ValueError("Unsupported language")
 
-    payload = {
-        "source_code": source_code,
-        "language_id": language_id,
-    }
+    base_url = Config.JUDGE0_URL.rstrip("/")
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if Config.JUDGE0_AUTH_HEADER and Config.JUDGE0_AUTH_TOKEN:
+        headers[Config.JUDGE0_AUTH_HEADER] = Config.JUDGE0_AUTH_TOKEN
+    if "rapidapi.com" in base_url:
+        if not Config.JUDGE0_API_KEY:
+            raise ExecutionUnavailable("Isolated code runner is not configured")
+        headers.update({
+            "X-RapidAPI-Key": Config.JUDGE0_API_KEY,
+            "X-RapidAPI-Host": Config.JUDGE0_HOST,
+        })
 
     try:
-        # If no API key, use mock response for demo
-        if not Config.JUDGE0_API_KEY:
-            return _mock_execution(source_code, language_id)
-
         response = requests.post(
-            f"{Config.JUDGE0_URL}/submissions?wait=true",
-            json=payload,
+            f"{base_url}/submissions?wait=true&base64_encoded=false",
+            json={"source_code": source_code, "language_id": language_id},
             headers=headers,
-            timeout=15,
+            timeout=(3, 20),
         )
+    except requests.Timeout as exc:
+        raise ExecutionUnavailable("Code execution service timed out") from exc
+    except requests.RequestException as exc:
+        raise ExecutionUnavailable("Code execution service is unavailable") from exc
 
-        if response.status_code != 200 and response.status_code != 201:
-            return {
-                "stdout": "",
-                "stderr": f"Judge0 error: HTTP {response.status_code}",
-                "status": "Error",
-                "time": "0",
-                "memory": "0",
-            }
-
+    if response.status_code not in {200, 201}:
+        # Do not return provider response bodies or credentials to the browser.
+        raise ExecutionUnavailable(f"Code execution service returned HTTP {response.status_code}")
+    try:
         result = response.json()
-        status_desc = result.get("status", {}).get("description", "Unknown")
+    except ValueError as exc:
+        raise ExecutionUnavailable("Code execution service returned an invalid response") from exc
 
-        return {
-            "stdout": result.get("stdout") or "",
-            "stderr": result.get("stderr") or result.get("compile_output") or "",
-            "status": status_desc,
-            "time": result.get("time") or "0",
-            "memory": str(result.get("memory") or 0),
-        }
-
-    except requests.Timeout:
-        return {
-            "stdout": "",
-            "stderr": "Execution timed out (15s limit)",
-            "status": "Time Limit Exceeded",
-            "time": "15",
-            "memory": "0",
-        }
-    except requests.RequestException as e:
-        return {
-            "stdout": "",
-            "stderr": str(e),
-            "status": "Error",
-            "time": "0",
-            "memory": "0",
-        }
-
-
-def _mock_execution(source_code: str, language_id: int) -> dict:
-    """
-    Mock code execution for demo when no Judge0 API key is set.
-    Actually executes Python & JS locally; mocks C/C++/Java smartly.
-    """
-    import random
-
-    # ── Python (exec locally) ──
-    if language_id == 71:
-        try:
-            import io
-            import contextlib
-
-            output = io.StringIO()
-            with contextlib.redirect_stdout(output):
-                exec(source_code, {"__builtins__": __builtins__})
-            stdout = output.getvalue()
-
-            return {
-                "stdout": stdout,
-                "stderr": "",
-                "status": "Accepted",
-                "time": f"{random.uniform(0.01, 0.5):.2f}",
-                "memory": str(random.randint(80, 200)),
-            }
-        except Exception as e:
-            return {
-                "stdout": "",
-                "stderr": str(e),
-                "status": "Runtime Error",
-                "time": "0.01",
-                "memory": "64",
-            }
-
-    # ── JavaScript (exec via Node if available) ──
-    if language_id == 63:
-        try:
-            import subprocess
-
-            result = subprocess.run(
-                ["node", "-e", source_code],
-                capture_output=True,
-                text=True,
-                timeout=5,
-            )
-            return {
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "status": "Accepted" if result.returncode == 0 else "Runtime Error",
-                "time": f"{random.uniform(0.01, 0.3):.2f}",
-                "memory": str(random.randint(60, 150)),
-            }
-        except FileNotFoundError:
-            # Node not installed — smart mock
-            pass
-        except subprocess.TimeoutExpired:
-            return {
-                "stdout": "",
-                "stderr": "Execution timed out (5s limit)",
-                "status": "Time Limit Exceeded",
-                "time": "5.00",
-                "memory": "0",
-            }
-        except Exception as e:
-            return {
-                "stdout": "",
-                "stderr": str(e),
-                "status": "Runtime Error",
-                "time": "0.01",
-                "memory": "64",
-            }
-
-    # ── Smart mock for C (50), C++ (54), Java (62), JS fallback ──
-    # Try to extract expected output from the source code
-    mock_output = _extract_mock_output(source_code, language_id)
+    if not isinstance(result, dict):
+        raise ExecutionUnavailable("Code execution service returned an invalid response")
+    status_data = result.get("status") or {}
+    status = status_data.get("description", "Unknown") if isinstance(status_data, dict) else "Unknown"
+    stdout = result.get("stdout") or ""
+    stderr = result.get("stderr") or result.get("compile_output") or ""
+    if not isinstance(stdout, str):
+        stdout = str(stdout)
+    if not isinstance(stderr, str):
+        stderr = str(stderr)
+    if status == "Compilation Error" and not stderr:
+        stderr = "Compilation failed. Check the compiler output and source syntax."
+    elif status == "Runtime Error" and not stderr:
+        stderr = "The program stopped with a runtime error."
+    elif status == "Time Limit Exceeded" and not stderr:
+        stderr = "The program exceeded the execution time limit."
 
     return {
-        "stdout": mock_output,
-        "stderr": "",
-        "status": "Accepted",
-        "time": f"{random.uniform(0.01, 0.8):.2f}",
-        "memory": str(random.randint(50, 256)),
+        "stdout": stdout[:MAX_STDOUT_BYTES],
+        "stderr": stderr[:MAX_STDERR_BYTES],
+        "status": status,
+        "time": result.get("time") or "0",
+        "memory": str(result.get("memory") or 0),
+        "error_type": _error_type(status, stderr),
+        "truncated": len(stdout) > MAX_STDOUT_BYTES or len(stderr) > MAX_STDERR_BYTES,
     }
 
 
-def _extract_mock_output(source_code: str, language_id: int) -> str:
-    """Extract likely output from source code by parsing print/cout/printf statements."""
-    import re
-
-    lines = []
-
-    if language_id in (50,):  # C — printf
-        for m in re.finditer(r'printf\s*\(\s*"([^"]*)"', source_code):
-            text = m.group(1).replace("\\n", "\n").replace("\\t", "\t")
-            # Replace format specifiers with placeholder values
-            text = re.sub(r'%\.?\d*[dif]', '86.25', text)
-            text = re.sub(r'%s', 'output', text)
-            lines.append(text)
-
-    elif language_id in (54,):  # C++ — cout
-        for m in re.finditer(r'cout\s*<<\s*"([^"]*)"', source_code):
-            lines.append(m.group(1))
-        if not lines:
-            for m in re.finditer(r'cout\s*<<\s*(.+?)(?:\s*<<|;)', source_code):
-                val = m.group(1).strip().strip('"')
-                if val and val != 'endl':
-                    lines.append(val)
-
-    elif language_id in (62,):  # Java — System.out.println
-        for m in re.finditer(r'System\.out\.println\s*\(\s*"?([^"]*)"?\s*\)', source_code):
-            lines.append(m.group(1))
-
-    elif language_id in (63,):  # JS fallback — console.log
-        for m in re.finditer(r'console\.log\s*\(\s*"?([^"]*)"?\s*\)', source_code):
-            lines.append(m.group(1))
-
-    if lines:
-        return "\n".join(lines) + "\n"
-
-    return "Hello, World!\n"
-
+def _error_type(status: str, stderr: str = "") -> str | None:
+    normalized = status.lower()
+    error_text = stderr.lower()
+    if any(marker in error_text for marker in ("syntaxerror", "indentationerror", "invalid syntax")):
+        return "syntax"
+    if "compilation" in normalized:
+        return "compile"
+    if "runtime" in normalized:
+        for error_name in ("nameerror", "typeerror", "valueerror", "indexerror", "keyerror", "zerodivisionerror"):
+            if error_name in error_text:
+                return error_name.removesuffix("error")
+        return "runtime"
+    if "time limit" in normalized:
+        return "timeout"
+    if "memory limit" in normalized:
+        return "memory"
+    if status == "Accepted":
+        return None
+    return "execution" if status != "Unknown" else "unknown"

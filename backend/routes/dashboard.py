@@ -3,15 +3,16 @@ Dashboard Route — SQLite-backed with auto-idle and live AI summary.
 """
 
 from flask import Blueprint, jsonify
+from datetime import datetime, timezone
 from models.database import get_all_students, auto_idle_stale_students
 from services.ai_summary import generate_ai_summary, generate_alerts
-from middleware.auth import jwt_optional
+from middleware.auth import roles_required
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
 
 @dashboard_bp.route("/dashboard", methods=["GET"])
-@jwt_optional
+@roles_required("professor")
 def get_dashboard():
     """
     Aggregated dashboard data for the professor view.
@@ -52,36 +53,23 @@ def get_dashboard():
     ]
     contribution_split.sort(key=lambda x: x["percentage"], reverse=True)
 
-    # Activity timeline (mock data — realistic for demo)
-    activity_timeline = [
-        {"day": "MON", "count": 45},
-        {"day": "TUE", "count": 62},
-        {"day": "WED", "count": 38},
-        {"day": "THU", "count": 71},
-        {"day": "FRI", "count": 55},
-        {"day": "SAT", "count": 80},
-        {"day": "SUN", "count": 68},
-    ]
+    # Historical activity is not stored yet, so don't fabricate a timeline.
+    activity_timeline = []
 
     # Team efficiency based on actual data
-    if total > 0 and total_ks > 0:
-        team_efficiency = min(round((active_count / total) * 70 + avg_score * 0.3), 100)
+    if total > 0:
+        team_efficiency = round((active_count / total) * 100)
     else:
         team_efficiency = 0
 
-    # Total active time (mock for demo)
-    active_time = "12h 45m"
+    active_time = None
 
     # AI-generated summary from REAL data
     ai_summary = generate_ai_summary(students)
     ai_alerts = generate_alerts(students)
 
     # Sprint velocity metrics
-    sprint_velocity = {
-        "overall_progress": min(round(avg_score * 0.88 + 10), 100) if total > 0 else 0,
-        "code_quality": 94,
-        "peer_sentiment": 82,
-    }
+    sprint_velocity = {"overall_progress": None, "code_quality": None, "peer_sentiment": None}
 
     return jsonify({
         "students": students,
@@ -100,6 +88,7 @@ def get_dashboard():
 
 
 @dashboard_bp.route("/dashboard/report", methods=["GET"])
+@roles_required("professor")
 def generate_report():
     """Generate a report — returns JSON."""
     students_raw = get_all_students()
@@ -111,7 +100,7 @@ def generate_report():
     return jsonify({
         "report_type": "Project Analytics Report",
         "course": "CS101: Intro to Python",
-        "generated_at": "2024-01-15T10:30:00Z",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
         "students": students,
         "summary": generate_ai_summary(students),
     })

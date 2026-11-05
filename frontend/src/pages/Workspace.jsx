@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
-import { useAuth } from '../context/AuthContext';
-import { executeCode, updateKeystrokes, getStudents } from '../services/api';
+import { useAuth } from '../context/auth';
+import { executeCode, updateKeystrokes, getSessionMembers } from '../services/api';
 import LANGUAGES from '../config/languages';
 import './Workspace.css';
 
@@ -48,7 +48,7 @@ function getActivityText(activity) {
 }
 
 export default function Workspace() {
-  const { user, logout } = useAuth();
+  const { user, logout, sessionId } = useAuth();
   const studentName = user?.name || 'Student';
 
   // ── Language State ──
@@ -97,16 +97,28 @@ export default function Workspace() {
 
   // ── 1. Fetch students from GET /api/students every 3 seconds ──
   const fetchStudents = useCallback(async () => {
+    if (!sessionId) {
+      setStudents([]);
+      setLoadingStudents(false);
+      setApiError('Join a coding session before opening the workspace.');
+      return;
+    }
     try {
-      const data = await getStudents();
-      setStudents(data);
+      const data = await getSessionMembers(sessionId);
+      setStudents((data.members || []).map((member) => ({
+        student: member.user,
+        keystrokes: member.keystrokes,
+        activity: member.activity,
+        role: member.role,
+        contribution: member.contribution,
+      })));
       setApiError(null);
-    } catch (err) {
+    } catch {
       setApiError('Backend unavailable');
     } finally {
       setLoadingStudents(false);
     }
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     fetchStudents();
@@ -122,11 +134,11 @@ export default function Workspace() {
       if (delta > 0) {
         lastSyncRef.current = currentKs;
         // Send only the DELTA — backend increments
-        updateKeystrokes(studentName, delta, activity).catch(() => {});
+        updateKeystrokes(studentName, delta, activity, sessionId).catch(() => {});
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [studentName, activity]);
+  }, [studentName, activity, sessionId]);
 
   // ── 3. Auto-reset to idle after 5s of inactivity ──
   useEffect(() => {
@@ -176,7 +188,7 @@ export default function Workspace() {
     setRunning(true);
     setConsoleTab('output');
     setActivity('submitted');
-    updateKeystrokes(studentName, keystrokeRef.current, 'submitted').catch(() => {});
+    updateKeystrokes(studentName, 0, 'submitted', sessionId).catch(() => {});
 
     try {
       const result = await executeCode(code, selectedLang.id, studentName);
