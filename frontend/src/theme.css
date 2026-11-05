@@ -60,24 +60,39 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 3px;
   min-height: 42px;
-  padding: 0 14px;
+  padding: 4px;
   border: 1px solid var(--color-border-light);
   border-radius: 999px;
   background: var(--color-surface);
   color: var(--color-text);
   box-shadow: 0 6px 24px rgb(15 23 42 / 14%);
-  font: 600 14px/1 var(--font-main);
+  font: 600 13px/1 var(--font-main);
+}
+
+.theme-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
   cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
-.theme-toggle:hover { transform: translateY(-1px); background: var(--color-surface-hover); }
-.theme-toggle:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
-.theme-toggle > span:first-child { font-size: 17px; }
-.theme-toggle--inline { position: static; min-height: 34px; padding: 0 10px; border-radius: 5px; box-shadow: none; font-size: 12px; }
-.theme-toggle--inline > span:first-child { font-size: 15px; }
+.theme-toggle button:hover { background: var(--color-surface-hover); color: var(--color-text); }
+.theme-toggle button.is-active { background: var(--color-primary); color: #fff; }
+.theme-toggle button:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 2px; }
+.theme-toggle button > span:first-child { font-size: 16px; }
+.theme-toggle--inline { position: static; min-height: 34px; padding: 2px; border-radius: 6px; box-shadow: none; font-size: 11px; }
+.theme-toggle--inline button { min-height: 28px; gap: 4px; padding: 0 7px; border-radius: 4px; }
+.theme-toggle--inline button > span:first-child { font-size: 14px; }
 
 /* Consistent body text and controls across the student and professor portals. */
 .portal-shell { --portal-ink: #131b2e; --portal-muted: #596579; --portal-line: #dfe4ef; --portal-blue: #1d4ed8; font-size: 1rem; background: var(--color-bg); color: var(--portal-ink); }
@@ -198,6 +213,6 @@
 
 @media (max-width: 640px) {
   .theme-toggle { right: 12px; bottom: 12px; min-height: 40px; }
-  .theme-toggle-label { font-size: 0.8125rem; }
+  .theme-toggle button { min-height: 30px; padding: 0 8px; }
   .portal-shell { font-size: 0.9375rem; }
 }
