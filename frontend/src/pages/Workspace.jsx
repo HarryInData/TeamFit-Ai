@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth';
+import { useTheme } from '../context/useTheme';
 import { getExamQuestions, getLeaderboard, runExamQuestion } from '../services/api';
 import LANGUAGES from '../config/languages';
+import ThemeToggle from '../components/ThemeToggle';
 import './Workspace.css';
 
 const STORAGE_KEY = 'teamfit_exam_drafts';
@@ -23,6 +25,7 @@ function writeDraft(sessionId, questionId, languageId, code) {
 
 export default function Workspace() {
   const { user, logout, sessionId, sessionCode, clearSession } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
   const [questions, setQuestions] = useState([]);
@@ -118,6 +121,7 @@ export default function Workspace() {
         <button className="exam-action-button" onClick={saveDraft}>Save draft</button>
         <button className="exam-action-button" onClick={() => runCode(false)} disabled={running}>{running ? 'Running…' : '▶ Run tests'}</button>
         <button className="exam-action-button exam-action-primary" onClick={() => runCode(true)} disabled={running}>{running ? 'Submitting…' : 'Submit solution'}</button>
+        <ThemeToggle inline />
         <button className="exam-avatar" title="Log out" onClick={logout}>{(user?.name || 'S').slice(0, 1).toUpperCase()}</button>
       </div>
     </header>
@@ -160,7 +164,7 @@ export default function Workspace() {
           <button className="exam-reset-button" onClick={() => { setDrafts((current) => ({ ...current, [codeKey]: activeQuestion?.starter_code || '' })); setOutput(null); }}>Reset code</button>
         </div>
         <div className="exam-code-editor">
-          <Editor key={`${activeQuestion?.id}-${selectedLang.id}`} height="100%" language={selectedLang.monaco} value={code} onChange={(value) => setDrafts((current) => ({ ...current, [codeKey]: value || '' }))} theme="vs" options={{ fontSize: 13, fontFamily: "'JetBrains Mono', monospace", minimap: { enabled: false }, lineNumbers: 'on', scrollBeyondLastLine: false, padding: { top: 16 }, renderLineHighlight: 'gutter', smoothScrolling: true, automaticLayout: true, tabSize: 4 }} />
+          <Editor key={`${activeQuestion?.id}-${selectedLang.id}`} height="100%" language={selectedLang.monaco} value={code} onChange={(value) => setDrafts((current) => ({ ...current, [codeKey]: value || '' }))} theme={theme === 'dark' ? 'vs-dark' : 'vs'} options={{ fontSize: 14, fontFamily: "'JetBrains Mono', monospace", minimap: { enabled: false }, lineNumbers: 'on', scrollBeyondLastLine: false, padding: { top: 16 }, renderLineHighlight: 'gutter', smoothScrolling: true, automaticLayout: true, tabSize: 4 }} />
         </div>
         <div className="exam-output-panel">
           <div className="exam-output-tabs">{[['tests','Test results'],['output','Console output'],['errors','Errors']].map(([id,label]) => <button key={id} className={consoleTab === id ? 'is-active' : ''} onClick={() => setConsoleTab(id)}>{label}{id === 'tests' && output?.test_results?.length ? ` (${output.test_results.filter((item) => item.passed).length}/${output.test_results.length})` : ''}</button>)}</div>

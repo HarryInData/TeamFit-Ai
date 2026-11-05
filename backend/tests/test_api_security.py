@@ -1,9 +1,7 @@
-import sys
 import unittest
 import uuid
 import tempfile
 import sys
-import types
 from unittest.mock import patch
 from pathlib import Path
 
@@ -135,16 +133,12 @@ class ApiSecurityTests(unittest.TestCase):
         invalid_role = self.client.post("/api/auth/google", json={"idToken": "verified-token", "role": "admin"})
         self.assertEqual(invalid_role.status_code, 400)
 
-        fake_auth = types.ModuleType("firebase_admin.auth")
-        fake_auth.verify_id_token = lambda *_args, **_kwargs: {
+        verified_identity = {
             "email": f"new-professor-{uuid.uuid4()}@example.test",
             "email_verified": True,
             "name": "New Professor",
         }
-        fake_firebase = types.ModuleType("firebase_admin")
-        fake_firebase._apps = {"test": object()}
-        fake_firebase.auth = fake_auth
-        with patch.dict(sys.modules, {"firebase_admin": fake_firebase, "firebase_admin.auth": fake_auth}):
+        with patch("routes.auth.verify_firebase_google_token", return_value=verified_identity):
             new_professor = self.client.post("/api/auth/google", json={
                 "idToken": "verified-token", "role": "professor",
             })

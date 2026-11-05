@@ -6,6 +6,8 @@ POST /api/auth/register → creates user + returns JWT
 
 import re
 import uuid
+import jwt
+import requests
 from flask import Blueprint, request, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
 from models.database import get_user_by_email, get_user_by_name, create_user, update_user_password
@@ -13,6 +15,56 @@ from middleware.auth import create_token
 from config import Config
 
 auth_bp = Blueprint("auth", __name__)
+
+
+def verify_firebase_google_token(id_token):
+    """Verify a Firebase ID token through Firebase Auth's account lookup API.
+
+    This avoids requiring a downloadable service-account key on Render. Firebase
+    validates the token and returns trusted account metadata; the decoded claims
+    are then bound to that account and checked for issuer, project, and revocation.
+    """
+    if not Config.FIREBASE_PROJECT_ID or not Config.FIREBASE_WEB_API_KEY:
+        raise RuntimeError("Firebase Authentication is not configured on the server")
+
+    response = requests.post(
+        "https://identitytoolkit.googleapis.com/v1/accounts:lookup",
+        params={"key": Config.FIREBASE_WEB_API_KEY},
+        json={"idToken": id_token},
+        timeout=10,
+    )
+    if response.status_code != 200:
+        raise ValueError("Firebase rejected the ID token")
+
+    users = response.json().get("users", [])
+    if not users:
+        raise ValueError("Firebase account was not found")
+    identity = users[0]
+    claims = jwt.decode(
+        id_token,
+        options={"verify_signature": False, "verify_exp": False, "verify_aud": False},
+    )
+    project_id = Config.FIREBASE_PROJECT_ID
+    if claims.get("aud") != project_id:
+        raise ValueError("Firebase token belongs to another project")
+    if claims.get("iss") != f"https://securetoken.google.com/{project_id}":
+        raise ValueError("Firebase token has an invalid issuer")
+    if claims.get("sub") != identity.get("localId"):
+        raise ValueError("Firebase token does not match the verified account")
+    if identity.get("disabled"):
+        raise ValueError("Firebase account is disabled")
+
+    valid_since = int(identity.get("validSince", "0") or 0)
+    if int(claims.get("auth_time", 0)) < valid_since:
+        raise ValueError("Firebase token has been revoked")
+    if not any(provider.get("providerId") == "google.com" for provider in identity.get("providerUserInfo", [])):
+        raise ValueError("A Google account is required")
+    return {
+        "email": identity.get("email", ""),
+        "email_verified": identity.get("emailVerified", False),
+        "name": identity.get("displayName", ""),
+        "uid": identity.get("localId", ""),
+    }
 
 
 @auth_bp.route("/auth/login", methods=["POST", "OPTIONS"])
@@ -132,12 +184,10 @@ def google_auth():
     if not isinstance(id_token, str) or not id_token:
         return jsonify({"error": "Firebase ID token is required"}), 400
     try:
-        import firebase_admin
-        from firebase_admin import auth as firebase_auth
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app()
-        identity = firebase_auth.verify_id_token(id_token, check_revoked=True)
-    except Exception:
+        identity = verify_firebase_google_token(id_token)
+    except RuntimeError:
+        return jsonify({"error": "Google sign-in is not configured on the server"}), 503
+    except (ValueError, jwt.InvalidTokenError, requests.RequestException):
         return jsonify({"error": "Google sign-in could not be verified"}), 401
 
     email = str(identity.get("email", "")).strip().lower()

@@ -1,5 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { useAuth } from "./context/auth";
 import HeroSection from "./pages/HeroSection";
 import LoginPage from "./pages/LoginPage";
@@ -8,6 +9,8 @@ import Workspace from "./pages/Workspace";
 import LandingPage from "./pages/LandingPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import ProfessorDashboard from "./pages/ProfessorDashboard";
+import ThemeToggle from "./components/ThemeToggle";
+import "./theme.css";
 
 function ProtectedRoute({ children, allowedRole, requireSession = false }) {
   const { user, loading, sessionId } = useAuth();
@@ -28,10 +31,12 @@ function ProtectedRoute({ children, allowedRole, requireSession = false }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) return null;
 
   return (
+    <>
     <Routes>
       {/* Public: Hero landing page */}
       <Route
@@ -102,6 +107,8 @@ function AppRoutes() {
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    {location.pathname !== "/workspace" && <ThemeToggle />}
+    </>
   );
 }
 
@@ -109,7 +116,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ThemeProvider>
+          <AppRoutes />
+        </ThemeProvider>
       </AuthProvider>
     </BrowserRouter>
   );

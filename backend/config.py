@@ -26,6 +26,10 @@ class Config:
     # ── AI ──
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
+    # ── Firebase Authentication ──
+    FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
+    FIREBASE_WEB_API_KEY = os.environ.get("FIREBASE_WEB_API_KEY", "")
+
     # ── Code Execution ──
     JUDGE0_API_KEY = os.environ.get("JUDGE0_API_KEY", "")
     JUDGE0_URL = os.environ.get("JUDGE0_URL", "https://judge0-ce.p.rapidapi.com")
@@ -58,3 +62,5 @@ class Config:
                 raise RuntimeError("FLASK_DEBUG must be false in production")
             if not cls.JUDGE0_URL.startswith("https://"):
                 raise RuntimeError("JUDGE0_URL must use HTTPS in production")
+            if not cls.FIREBASE_PROJECT_ID or not cls.FIREBASE_WEB_API_KEY:
+                raise RuntimeError("FIREBASE_PROJECT_ID and FIREBASE_WEB_API_KEY must be configured in production")

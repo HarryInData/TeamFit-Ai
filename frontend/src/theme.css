@@ -1,0 +1,203 @@
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0b1220;
+  --color-bg-gradient: #0b1220;
+  --color-surface: #111a2b;
+  --color-surface-alt: #172338;
+  --color-surface-hover: #1d2b42;
+  --color-surface-border: #26364d;
+  --color-card: #111a2b;
+  --color-card-hover: #172338;
+  --color-primary: #6c9cff;
+  --color-primary-light: #8bb1ff;
+  --color-primary-dark: #467be0;
+  --color-gradient-btn: #3869cb;
+  --color-gradient-btn-hover: #2c57ad;
+  --color-success: #35c69b;
+  --color-success-bg: #102d2b;
+  --color-warning: #f2b84b;
+  --color-warning-bg: #35291a;
+  --color-danger: #ff7f88;
+  --color-danger-bg: #351f2a;
+  --color-info: #75a8ff;
+  --color-info-bg: #172b48;
+  --color-text: #e7edf7;
+  --color-text-muted: #a4b1c4;
+  --color-text-dim: #7f8da3;
+  --color-text-white: #f8fafc;
+  --color-link: #8bb1ff;
+  --color-border: #26364d;
+  --color-border-light: #344761;
+  --color-input-bg: #0e1727;
+  --color-input-border: #344761;
+  --color-input-focus: #7da5f8;
+
+  --ink: #0b1220;
+  --ink2: #111a2b;
+  --surface: #111a2b;
+  --border: #26364d;
+  --border2: #344761;
+  --text: #e7edf7;
+  --muted: #a4b1c4;
+  --portal-ink: #e7edf7;
+  --portal-muted: #a4b1c4;
+  --portal-line: #293950;
+  --portal-blue: #82a9ff;
+
+  background: var(--color-bg);
+}
+
+:root[data-theme="dark"] body {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.theme-toggle {
+  position: fixed;
+  z-index: 1200;
+  right: 20px;
+  bottom: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border-light);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 6px 24px rgb(15 23 42 / 14%);
+  font: 600 14px/1 var(--font-main);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.theme-toggle:hover { transform: translateY(-1px); background: var(--color-surface-hover); }
+.theme-toggle:focus-visible { outline: 3px solid var(--color-primary); outline-offset: 3px; }
+.theme-toggle > span:first-child { font-size: 17px; }
+.theme-toggle--inline { position: static; min-height: 34px; padding: 0 10px; border-radius: 5px; box-shadow: none; font-size: 12px; }
+.theme-toggle--inline > span:first-child { font-size: 15px; }
+
+/* Consistent body text and controls across the student and professor portals. */
+.portal-shell { --portal-ink: #131b2e; --portal-muted: #596579; --portal-line: #dfe4ef; --portal-blue: #1d4ed8; font-size: 1rem; background: var(--color-bg); color: var(--portal-ink); }
+:root[data-theme="dark"] .portal-shell { --portal-ink: #e7edf7; --portal-muted: #a4b1c4; --portal-line: #293950; --portal-blue: #82a9ff; }
+.portal-header { background: var(--color-bg); }
+.portal-account button,
+.portal-button,
+.portal-join-form input,
+.portal-form input,
+.portal-form textarea { background: var(--color-surface); color: var(--portal-ink); border-color: var(--portal-line); }
+.portal-account button:hover,
+.portal-button:hover { background: var(--color-surface-hover); }
+.portal-metrics article,
+.portal-panel { background: var(--color-surface); }
+.portal-form label,
+.portal-metrics span,
+.portal-row p,
+.portal-empty,
+.portal-note,
+.portal-details { font-size: 0.875rem; }
+.portal-button { font-size: 0.875rem; }
+.portal-eyebrow { font-size: 0.75rem !important; }
+.portal-form label { font-size: 0.875rem; }
+.portal-status { font-size: 0.75rem; }
+.portal-row h3 { font-size: 1rem; }
+.portal-row p { line-height: 1.5; }
+
+.landing-page .nav-links a,
+.landing-page .btn-outline,
+.landing-page .hero-btn-ghost,
+.landing-page .hero-btn-main { font-size: 0.875rem; }
+.landing-page .htag,
+.landing-page .ftag { font-size: 0.75rem; }
+.exam-workspace { font-size: 0.875rem; }
+.exam-pane-heading h2,
+.exam-standings-heading h2 { font-size: 0.9375rem; }
+.exam-problem-statement { font-size: 0.875rem; }
+.exam-live,
+.exam-course span,
+.exam-total-score span,
+.exam-question-points,
+.exam-problem-meta span,
+.exam-output-muted,
+.exam-test-result,
+.exam-save-state,
+.exam-result-summary,
+.exam-language-select,
+.exam-example-head span,
+.exam-example-head strong { font-size: 0.75rem; }
+.exam-action-button,
+.exam-output-tabs button { font-size: 0.8125rem; }
+
+/* Landing page cards and navigation follow the selected palette. */
+:root[data-theme="dark"] .landing-page { background: #0b1220; color: #e7edf7; }
+:root[data-theme="dark"] .landing-page nav { background: rgb(11 18 32 / 94%); border-color: #26364d; }
+:root[data-theme="dark"] .landing-page .nav-logo,
+:root[data-theme="dark"] .landing-page .footer-logo,
+:root[data-theme="dark"] .landing-page .section-heading,
+:root[data-theme="dark"] .landing-page .feat-title,
+:root[data-theme="dark"] .landing-page .step-title,
+:root[data-theme="dark"] .landing-page .cta-heading,
+:root[data-theme="dark"] .landing-page .contrib-pct,
+:root[data-theme="dark"] .landing-page .metric-val,
+:root[data-theme="dark"] .landing-page .demo-card-title { color: #e7edf7; }
+:root[data-theme="dark"] .landing-page .nav-links a,
+:root[data-theme="dark"] .landing-page .hero-sub,
+:root[data-theme="dark"] .landing-page .section-heading + p,
+:root[data-theme="dark"] .landing-page .feat-desc,
+:root[data-theme="dark"] .landing-page .step-desc,
+:root[data-theme="dark"] .landing-page .cta-sub,
+:root[data-theme="dark"] .landing-page .trust-item { color: #a4b1c4; }
+:root[data-theme="dark"] .landing-page .btn-outline,
+:root[data-theme="dark"] .landing-page .hero-btn-ghost { background: #111a2b; color: #e7edf7; border-color: #344761; }
+:root[data-theme="dark"] .landing-page .htag,
+:root[data-theme="dark"] .landing-page .ftag { background: #111a2b; color: #c3cedd; border-color: #293950; }
+:root[data-theme="dark"] .landing-page .editor-card,
+:root[data-theme="dark"] .landing-page .feat-card,
+:root[data-theme="dark"] .landing-page .demo-card,
+:root[data-theme="dark"] .landing-page .trust,
+:root[data-theme="dark"] .landing-page footer { background: #111a2b; color: #e7edf7; border-color: #293950; }
+:root[data-theme="dark"] .landing-page .code-body { background: #0b1220; color: #dbe6f5; }
+
+/* The coding workspace uses Monaco's dark palette plus matching surrounding panels. */
+:root[data-theme="dark"] .exam-workspace { background: #0b1220; color: #e7edf7; }
+:root[data-theme="dark"] .exam-topbar,
+:root[data-theme="dark"] .exam-question-nav,
+:root[data-theme="dark"] .exam-problem-pane,
+:root[data-theme="dark"] .exam-editor-pane,
+:root[data-theme="dark"] .exam-standings-pane { background: #111a2b; color: #e7edf7; }
+:root[data-theme="dark"] .exam-topbar,
+:root[data-theme="dark"] .exam-question-nav,
+:root[data-theme="dark"] .exam-problem-pane,
+:root[data-theme="dark"] .exam-editor-pane,
+:root[data-theme="dark"] .exam-pane-heading,
+:root[data-theme="dark"] .exam-standings-heading,
+:root[data-theme="dark"] .exam-question-tab,
+:root[data-theme="dark"] .exam-output-panel,
+:root[data-theme="dark"] .exam-output-tabs,
+:root[data-theme="dark"] .exam-test-result,
+:root[data-theme="dark"] .exam-rank-row { border-color: #293950; }
+:root[data-theme="dark"] .exam-question-tab { background: #111a2b; color: #a4b1c4; }
+:root[data-theme="dark"] .exam-question-tab:hover,
+:root[data-theme="dark"] .exam-question-tab.is-active { background: #172338; color: #a9c4ff; }
+:root[data-theme="dark"] .exam-action-button,
+:root[data-theme="dark"] .exam-language-select select,
+:root[data-theme="dark"] .exam-output-tabs,
+:root[data-theme="dark"] .exam-example-head,
+:root[data-theme="dark"] .exam-console-text { background: #172338; color: #dbe6f5; border-color: #344761; }
+:root[data-theme="dark"] .exam-problem-statement,
+:root[data-theme="dark"] .exam-example pre,
+:root[data-theme="dark"] .exam-save-state,
+:root[data-theme="dark"] .exam-output-muted { color: #b4c0d1; }
+:root[data-theme="dark"] .exam-example,
+:root[data-theme="dark"] .exam-example pre { background: #0e1727; border-color: #293950; }
+:root[data-theme="dark"] .exam-question-points,
+:root[data-theme="dark"] .exam-pane-heading > span,
+:root[data-theme="dark"] .exam-problem-meta span { background: #1a2b46; color: #b8ccff; }
+
+@media (max-width: 640px) {
+  .theme-toggle { right: 12px; bottom: 12px; min-height: 40px; }
+  .theme-toggle-label { font-size: 0.8125rem; }
+  .portal-shell { font-size: 0.9375rem; }
+}
