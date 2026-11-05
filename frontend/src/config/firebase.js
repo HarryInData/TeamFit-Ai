@@ -6,7 +6,7 @@
  * ═══════════════════════════════════════════
  */
 
-import { initializeApp } from "@firebase/app";
+import { getApp, getApps, initializeApp } from "@firebase/app";
 import { getAuth, GoogleAuthProvider } from "@firebase/auth";
 
 const firebaseConfig = {
@@ -27,8 +27,9 @@ let googleProvider = null;
 
 if (hasFirebaseConfig) {
   try {
-    const app = initializeApp(firebaseConfig);
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
     auth = getAuth(app);
+    auth.useDeviceLanguage();
     googleProvider = new GoogleAuthProvider();
     // Always prompt user to select an account (don't auto-pick)
     googleProvider.setCustomParameters({ prompt: 'select_account' });

@@ -150,7 +150,14 @@ export default function LoginPage() {
         setGoogleLoading(false);
         return;
       }
-      setError(err.message || "Google sign-in failed. Please try again.");
+      const authErrors = {
+        "auth/unauthorized-domain": "This website is not authorized for Google sign-in yet. Add its domain to Firebase Authentication's Authorized domains.",
+        "auth/operation-not-allowed": "Google sign-in is not enabled for this Firebase project yet.",
+        "auth/popup-blocked": "Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.",
+        "auth/network-request-failed": "Google sign-in could not reach Firebase. Check your connection and try again.",
+        "auth/cancelled-popup-request": "A Google sign-in window is already open. Finish or close it, then try again.",
+      };
+      setError(authErrors[err.code] || err.message || "Google sign-in failed. Please try again.");
     } finally {
       setGoogleLoading(false);
     }

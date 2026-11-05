@@ -1,0 +1,15 @@
+{
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "TeamFit AI",
+        "supportEmail": "harikishan4763@gmail.com",
+        "authorizedRedirectUris": [
+          "https://team-fit-ai.vercel.app",
+          "https://team-fit-p8qwbijmc-harryindatas-projects.vercel.app",
+          "http://localhost"
+        ]
+      }
+    }
+  }
+}

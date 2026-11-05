@@ -13,6 +13,11 @@
       name="description"
       content="Run professor-led coding exams with a secure coding workspace, live session standings, and AI-assisted assessment insights."
     />
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem("teamfit_theme") === "dark" ? "dark" : "light";
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

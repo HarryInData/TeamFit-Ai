@@ -57,7 +57,10 @@ export function AuthProvider({ children }) {
       throw new Error('Google sign-in is not configured. Use email and password instead.');
     }
     const result = await signInWithPopup(auth, googleProvider);
-    const idToken = await result.user.getIdToken();
+    if (!result.user.providerData.some((provider) => provider.providerId === 'google.com')) {
+      throw new Error('Choose a Google account to continue.');
+    }
+    const idToken = await result.user.getIdToken(true);
     const data = await googleLogin(idToken, role);
     loginUser(data.user, data.token);
     return data;
