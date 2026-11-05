@@ -139,6 +139,14 @@ export async function getAIInsights(students = null) {
   return apiFetch(`${API_BASE}/ai-insights`, options);
 }
 
+export async function generateQuestionDraft(description, difficulty = 'intermediate') {
+  return apiFetch(`${API_BASE}/ai/generate-question`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ description, difficulty }),
+  });
+}
+
 /* ── Sessions ── */
 
 export async function createSession(title = 'Practical Exam', questions = []) {

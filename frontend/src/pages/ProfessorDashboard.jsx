@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/auth';
-import { createSession, getDashboard, startExam, closeExam } from '../services/api';
+import { createSession, generateQuestionDraft, getDashboard, startExam, closeExam } from '../services/api';
 import './ExamPortal.css';
 
-const emptyQuestion = () => ({ title: '', statement: '', exampleInput: '', exampleOutput: '', testCases: [{ stdin: '', expectedOutput: '' }], starterCode: '', maxScore: 100 });
+const emptyQuestion = () => ({ idea: '', difficulty: 'intermediate', title: '', statement: '', exampleInput: '', exampleOutput: '', testCases: [{ stdin: '', expectedOutput: '' }], starterCode: '', maxScore: 100 });
 
 export default function ProfessorDashboard() {
   const { user, logout } = useAuth();
   const [data, setData] = useState(null);
   const [creating, setCreating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generatingQuestion, setGeneratingQuestion] = useState(null);
   const [error, setError] = useState('');
   const [title, setTitle] = useState('');
   const [questions, setQuestions] = useState([emptyQuestion()]);
@@ -29,6 +30,33 @@ export default function ProfessorDashboard() {
       ...question,
       testCases: question.testCases.map((testCase, testIndex) => testIndex === caseIndex ? { ...testCase, [field]: value } : testCase),
     }));
+  }
+
+  async function generateQuestion(index) {
+    const question = questions[index];
+    if (!question?.idea?.trim()) {
+      setError('Add a short idea for the question you want AI to create.');
+      return;
+    }
+    setGeneratingQuestion(index);
+    setError('');
+    try {
+      const { question: draft } = await generateQuestionDraft(question.idea.trim(), question.difficulty || 'intermediate');
+      setQuestions((current) => current.map((item, i) => i === index ? {
+        ...item,
+        title: draft.title,
+        statement: draft.statement,
+        exampleInput: draft.example_input,
+        exampleOutput: draft.example_output,
+        starterCode: draft.starter_code,
+        testCases: draft.test_cases.map((testCase) => ({ stdin: testCase.stdin, expectedOutput: testCase.expected_output })),
+        maxScore: draft.max_score || 100,
+      } : item));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGeneratingQuestion(null);
+    }
   }
 
   async function saveExam(event) {
@@ -105,6 +133,15 @@ export default function ProfessorDashboard() {
         <label>Exam title<input required maxLength={120} placeholder="e.g. Data structures practical" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
         {questions.map((question, index) => <fieldset className="portal-question-form" key={index}>
           <legend>Question {index + 1}</legend>
+          <div className="portal-ai-question">
+            <div><strong>Draft this question with AI</strong><span>Describe the concept; AI will prepare an editable problem, example, starter code, and hidden tests.</span></div>
+            <label>Short question idea<textarea rows={2} maxLength={2000} value={question.idea || ''} onChange={(event) => updateQuestion(index, 'idea', event.target.value)} placeholder="e.g. Find the shortest path in a grid with obstacles" /></label>
+            <div className="portal-form-columns portal-ai-question-actions">
+              <label>Difficulty<select value={question.difficulty || 'intermediate'} onChange={(event) => updateQuestion(index, 'difficulty', event.target.value)}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></label>
+              <button className="portal-button portal-button--primary" type="button" onClick={() => generateQuestion(index)} disabled={generatingQuestion !== null || saving}>{generatingQuestion === index ? 'Generating question…' : '✨ Generate question'}</button>
+            </div>
+            <small>Review the generated statement and hidden tests before saving the exam.</small>
+          </div>
           <label>Question title<input required maxLength={160} value={question.title} onChange={(event) => updateQuestion(index, 'title', event.target.value)} placeholder="e.g. Pair Sum" /></label>
           <label>Problem description<textarea required maxLength={20000} rows={5} value={question.statement} onChange={(event) => updateQuestion(index, 'statement', event.target.value)} placeholder="Describe the problem, input, output, and constraints." /></label>
           <div className="portal-form-columns">
