@@ -188,18 +188,18 @@ export default function SessionLobby() {
             <span className="lobby-logo-text">TeamFit AI</span>
           </div>
           <h1 className="lobby-title">Welcome, {studentName}</h1>
-          <p className="lobby-subtitle">Start a collaborative coding session</p>
+          <p className="lobby-subtitle">Join a professor's practical exam from your student dashboard.</p>
 
           <div className="lobby-options">
-            <button className="lobby-option-btn lobby-option-btn--create" onClick={() => setMode('create')}>
-              <span className="lobby-option-icon">🚀</span>
-              <span className="lobby-option-label">Create Session</span>
-              <span className="lobby-option-desc">Start a new team workspace</span>
+            <button className="lobby-option-btn lobby-option-btn--create" onClick={() => navigate('/session')}>
+              <span className="lobby-option-icon">📊</span>
+              <span className="lobby-option-label">Student dashboard</span>
+              <span className="lobby-option-desc">Browse open practical exams</span>
             </button>
             <button className="lobby-option-btn lobby-option-btn--join" onClick={() => setMode('join')}>
               <span className="lobby-option-icon">🔗</span>
               <span className="lobby-option-label">Join Session</span>
-              <span className="lobby-option-desc">Enter a team code to join</span>
+              <span className="lobby-option-desc">Enter your professor's exam code</span>
             </button>
           </div>
 
@@ -207,7 +207,7 @@ export default function SessionLobby() {
         </div>
       ) : mode === 'create' ? (
         <div className="lobby-card">
-          <button className="lobby-back-btn" onClick={() => setMode(null)}>← Back</button>
+              <button className="lobby-back-btn" onClick={() => navigate('/session')}>← Student dashboard</button>
           <h1 className="lobby-title">🚀 Create Session</h1>
           <p className="lobby-subtitle">Your teammates will join using the code</p>
 
@@ -232,9 +232,9 @@ export default function SessionLobby() {
         </div>
       ) : (
         <div className="lobby-card">
-          <button className="lobby-back-btn" onClick={() => setMode(null)}>← Back</button>
+          <button className="lobby-back-btn" onClick={() => navigate('/session')}>← Student dashboard</button>
           <h1 className="lobby-title">🔗 Join Session</h1>
-          <p className="lobby-subtitle">Enter the code shared by your teammate</p>
+          <p className="lobby-subtitle">Enter the exam code shared by your professor</p>
 
           <div className="lobby-form">
             <label className="lobby-label">Session Code</label>

@@ -56,11 +56,20 @@ class ApiSecurityTests(unittest.TestCase):
 
     def test_activity_is_scoped_to_a_session_and_requires_membership(self):
         name = f"Session Tester {uuid.uuid4().hex[:8]}"
-        user = {"id": str(uuid.uuid4()), "name": name, "email": f"{uuid.uuid4()}@example.test", "role": "student"}
-        headers = {"Authorization": f"Bearer {create_token(user)}"}
-        created = self.client.post("/api/session/create", json={"title": "Scoped activity"}, headers=headers)
+        student = {"id": str(uuid.uuid4()), "name": name, "email": f"{uuid.uuid4()}@example.test", "role": "student"}
+        professor = {"id": str(uuid.uuid4()), "name": "Exam Professor", "email": f"{uuid.uuid4()}@example.test", "role": "professor"}
+        headers = {"Authorization": f"Bearer {create_token(student)}"}
+        professor_headers = {"Authorization": f"Bearer {create_token(professor)}"}
+        question = {"title": "Add numbers", "statement": "Read two integers and print their sum.",
+                    "examples": [{"input": "2 3", "output": "5"}],
+                    "test_cases": [{"stdin": "2 3", "expected_output": "5", "hidden": True}],
+                    "starter_code": "", "max_score": 100}
+        created = self.client.post("/api/session/create", json={"title": "Scoped activity", "questions": [question]}, headers=professor_headers)
         self.assertEqual(created.status_code, 201)
         session_id = created.json["session_id"]
+        self.assertEqual(created.json["status"], "draft")
+        self.assertEqual(self.client.post(f"/api/session/{session_id}/start", headers=professor_headers).status_code, 200)
+        self.assertEqual(self.client.post("/api/session/join", json={"join_code": created.json["join_code"]}, headers=headers).status_code, 200)
 
         activity = self.client.post("/api/students", json={
             "session_id": session_id, "keystrokes": 12, "activity": "typing",
@@ -68,13 +77,29 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(activity.status_code, 200)
         members = self.client.get(f"/api/session/{session_id}/members", headers=headers)
         self.assertEqual(members.status_code, 200)
-        self.assertEqual(members.json["members"][0]["keystrokes"], 12)
+        student_member = next(member for member in members.json["members"] if member["user"] == name)
+        self.assertEqual(student_member["keystrokes"], 12)
 
         outsider = {"id": str(uuid.uuid4()), "name": "Outsider", "email": f"{uuid.uuid4()}@example.test", "role": "student"}
         denied = self.client.post("/api/students", json={
             "session_id": session_id, "keystrokes": 1, "activity": "typing",
         }, headers={"Authorization": f"Bearer {create_token(outsider)}"})
         self.assertEqual(denied.status_code, 403)
+
+        question_result = self.client.get(f"/api/session/{session_id}/questions", headers=headers)
+        self.assertEqual(question_result.status_code, 200)
+        self.assertEqual(question_result.json["questions"][0]["statement"], question["statement"])
+        self.assertNotIn("test_cases", question_result.json["questions"][0])
+        closed = self.client.post(f"/api/session/{session_id}/close", headers=professor_headers)
+        self.assertEqual(closed.status_code, 200)
+        self.assertEqual(closed.json["status"], "closed")
+        self.assertEqual(self.client.post("/api/session/join", json={"session_id": session_id}, headers=headers).status_code, 404)
+
+    def test_only_professor_can_create_exam_with_questions(self):
+        student = {"id": "student-create", "name": "Student Creator", "email": "creator@example.test", "role": "student"}
+        response = self.client.post("/api/session/create", json={"title": "Blocked", "questions": []},
+                                    headers={"Authorization": f"Bearer {create_token(student)}"})
+        self.assertEqual(response.status_code, 403)
 
     def test_self_registration_cannot_create_professors_and_google_has_no_mock_bypass(self):
         result = self.client.post("/api/auth/register", json={

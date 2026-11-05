@@ -29,7 +29,8 @@ class ExecutionUnavailable(Exception):
     """The isolated execution provider is not configured or reachable."""
 
 
-def execute_code(source_code: str, language_id: int = 71) -> dict:
+def execute_code(source_code: str, language_id: int = 71, stdin: str = "",
+                 expected_output: str = None) -> dict:
     """Run code in Judge0 and normalize syntax, compile, and runtime errors."""
     if not isinstance(source_code, str) or not source_code.strip():
         raise ValueError("Code cannot be empty")
@@ -37,6 +38,10 @@ def execute_code(source_code: str, language_id: int = 71) -> dict:
         raise ValueError("Code is too large (maximum 64 KiB)")
     if isinstance(language_id, bool) or language_id not in SUPPORTED_LANGUAGES:
         raise ValueError("Unsupported language")
+    if not isinstance(stdin, str) or len(stdin.encode("utf-8")) > 10_000:
+        raise ValueError("Program input is too large")
+    if expected_output is not None and (not isinstance(expected_output, str) or len(expected_output.encode("utf-8")) > 10_000):
+        raise ValueError("Expected output is too large")
 
     base_url = Config.JUDGE0_URL.rstrip("/")
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -53,7 +58,8 @@ def execute_code(source_code: str, language_id: int = 71) -> dict:
     try:
         response = requests.post(
             f"{base_url}/submissions?wait=true&base64_encoded=false",
-            json={"source_code": source_code, "language_id": language_id, **EXECUTION_LIMITS},
+            json={"source_code": source_code, "language_id": language_id, "stdin": stdin,
+                  "expected_output": expected_output, **EXECUTION_LIMITS},
             headers=headers,
             timeout=(3, 20),
         )

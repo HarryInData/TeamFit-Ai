@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import { useAuth } from '../context/auth';
-import { executeCode, updateKeystrokes, getSessionMembers } from '../services/api';
+import { updateKeystrokes, getSessionMembers, getExamQuestions, getLeaderboard, runExamQuestion } from '../services/api';
 import LANGUAGES from '../config/languages';
 import './Workspace.css';
 
@@ -32,12 +32,6 @@ function buildFilesForLang(lang) {
 
 const MEMBER_COLORS = ['#6C5CE7', '#A855F7', '#3B82F6', '#FFB800'];
 
-function getBadgeInfo(score) {
-  if (score >= 50) return { label: 'Top Performer', className: 'ws-contributor-role--good', emoji: '🔥' };
-  if (score >= 30) return { label: 'Steady', className: 'ws-contributor-role--good', emoji: '✅' };
-  return { label: 'Needs Contribution', className: 'ws-contributor-role--warn', emoji: '⚠️' };
-}
-
 function getActivityText(activity) {
   switch (activity) {
     case 'typing': return 'is typing...';
@@ -60,7 +54,7 @@ export default function Workspace() {
 
   // ── Core State ──
   const [activeFile, setActiveFile] = useState(`main${selectedLang.ext}`);
-  const [fileContents, setFileContents] = useState(initFiles.contents);
+  const [questionCodes, setQuestionCodes] = useState({});
   const [files, setFiles] = useState(initFiles.files);
   const [output, setOutput] = useState(null);
   const [consoleTab, setConsoleTab] = useState('output');
@@ -68,8 +62,10 @@ export default function Workspace() {
   const [keystrokes, setKeystrokes] = useState(0);
   const [activity, setActivity] = useState('idle');
   const [students, setStudents] = useState([]);
-  const [loadingStudents, setLoadingStudents] = useState(true);
   const [apiError, setApiError] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [activeQuestionId, setActiveQuestionId] = useState('');
+  const [leaderboard, setLeaderboard] = useState([]);
 
   // ── UI modals/dropdowns ──
   const [showAddTeammate, setShowAddTeammate] = useState(false);
@@ -82,14 +78,30 @@ export default function Workspace() {
   const lastSyncRef = useRef(0);
 
   // Current code for editor
-  const code = fileContents[activeFile] || '';
+  const code = questionCodes[activeQuestionId] ?? activeQuestion?.starter_code ?? selectedLang.template;
+  const activeQuestion = questions.find((question) => question.id === activeQuestionId) || questions[0];
+
+  const refreshExam = useCallback(async () => {
+    if (!sessionId) return;
+    try {
+      const [questionData, boardData] = await Promise.all([getExamQuestions(sessionId), getLeaderboard(sessionId)]);
+      const nextQuestions = questionData.questions || [];
+      setQuestions(nextQuestions);
+      setActiveQuestionId((current) => nextQuestions.some((question) => question.id === current) ? current : nextQuestions[0]?.id || '');
+      setLeaderboard(boardData.leaderboard || []);
+    } catch (error) {
+      setApiError(error.message);
+    }
+  }, [sessionId]);
+
+  useEffect(() => { refreshExam(); const timer = setInterval(refreshExam, 5000); return () => clearInterval(timer); }, [refreshExam]);
 
   // ── Language switch handler ──
   function handleLanguageChange(lang) {
     setSelectedLang(lang);
     const newFiles = buildFilesForLang(lang);
     setFiles(newFiles.files);
-    setFileContents(newFiles.contents);
+    setQuestionCodes({});
     setActiveFile(`main${lang.ext}`);
     setOutput(null);
     setShowLangMenu(false);
@@ -99,7 +111,6 @@ export default function Workspace() {
   const fetchStudents = useCallback(async () => {
     if (!sessionId) {
       setStudents([]);
-      setLoadingStudents(false);
       setApiError('Join a coding session before opening the workspace.');
       return;
     }
@@ -115,8 +126,6 @@ export default function Workspace() {
       setApiError(null);
     } catch {
       setApiError('Backend unavailable');
-    } finally {
-      setLoadingStudents(false);
     }
   }, [sessionId]);
 
@@ -160,14 +169,9 @@ export default function Workspace() {
   }, []);
 
   // ── File switching ──
-  function handleFileClick(fileName) {
-    setActiveFile(fileName);
-    setOutput(null); // clear console when switching files
-  }
-
   // ── Editor change handler ──
   function handleEditorChange(value) {
-    setFileContents((prev) => ({ ...prev, [activeFile]: value || '' }));
+    setQuestionCodes((prev) => ({ ...prev, [activeQuestionId]: value || '' }));
     keystrokeRef.current += 1;
     setKeystrokes(keystrokeRef.current);
     setActivity('typing');
@@ -175,6 +179,11 @@ export default function Workspace() {
 
   // ── Run Code ──
   async function handleRun() {
+    if (!activeQuestion) {
+      setOutput({ stdout: '', stderr: 'No exam question is available. Return to your dashboard and join an open exam.', status: 'Error', time: '0', memory: '0' });
+      setConsoleTab('output');
+      return;
+    }
     if (!code.trim()) {
       setOutput({
         stdout: '',
@@ -191,9 +200,10 @@ export default function Workspace() {
     updateKeystrokes(studentName, 0, 'submitted', sessionId).catch(() => {});
 
     try {
-      const result = await executeCode(code, selectedLang.id, studentName);
+      const result = await runExamQuestion(sessionId, activeQuestion.id, code, selectedLang.id);
       setOutput(result);
       fetchStudents();
+      refreshExam();
     } catch (err) {
       setOutput({
         stdout: '',
@@ -282,7 +292,7 @@ export default function Workspace() {
       <header className="ws-topnav">
         <div className="ws-topnav-left">
           <span className="ws-logo-text">TeamFit AI</span>
-          <span className="ws-session-label">Collaborative Session</span>
+          <span className="ws-session-label">{activeQuestion ? 'Practical Exam' : 'Coding Session'}</span>
           <span className="ws-system-badge ws-system-badge--active">● System Active</span>
           {apiError && <span className="ws-api-error">⚠ {apiError}</span>}
         </div>
@@ -315,10 +325,10 @@ export default function Workspace() {
             )}
           </div>
 
-          <span className="ws-keystroke-count" title="Your keystrokes this session">⌨ {keystrokes}</span>
+          <span className="ws-keystroke-count">{leaderboard.length} students</span>
           <button className="ws-run-btn" onClick={handleRun} disabled={running}>
             <span className="ws-run-icon">▶</span>
-            {running ? 'Running...' : 'Run Code'}
+            {running ? 'Grading...' : 'Submit & run'}
           </button>
           <button className="ws-icon-btn" title="Team">👥</button>
           {/* Profile dropdown — NOT redirect to login */}
@@ -354,36 +364,11 @@ export default function Workspace() {
       </header>
 
       <div className="ws-body">
-        {/* ── File Sidebar — VS Code-style vertical file explorer ── */}
-        <aside className="ws-sidebar">
-          <div className="ws-sidebar-header">
-            <span className="ws-sidebar-icon">📁</span>
-            <div>
-              <div className="ws-sidebar-title">Explorer</div>
-              <div className="ws-sidebar-sub">{selectedLang.name} Project</div>
-            </div>
-          </div>
-          <nav className="ws-file-list">
-            {files.map((f) => (
-              <button
-                key={f.name}
-                className={`ws-file-item ${activeFile === f.name ? 'ws-file-item--active' : ''}`}
-                onClick={() => handleFileClick(f.name)}
-              >
-                <LangIcon icon={f.icon} size={16} /> {f.name}
-              </button>
-            ))}
-            <button className="ws-file-item ws-file-settings" onClick={() => setShowSettings(true)}>
-              ⚙️ Settings
-            </button>
-          </nav>
-          <div className="ws-sidebar-bottom">
-            <button className="ws-add-teammate-btn" onClick={() => setShowAddTeammate(true)}>
-              👤 + Add Teammate
-            </button>
-            <button className="ws-help-btn" onClick={() => alert('Help: Use the editor to write code, click Run Code to execute. Keystrokes are tracked automatically.')}>
-              ❓ Help
-            </button>
+        <aside className="ws-problem-panel">
+        <div className="ws-problem-head"><span>QUESTION {Math.max(questions.findIndex((question) => question.id === activeQuestion?.id) + 1, 1)} OF {questions.length}</span><strong>{activeQuestion?.max_score ?? 0} pts</strong></div>
+          {questions.length > 1 && <select aria-label="Select question" value={activeQuestion?.id || ''} onChange={(event) => setActiveQuestionId(event.target.value)}>{questions.map((question, index) => <option value={question.id} key={question.id}>{index + 1}. {question.title}</option>)}</select>}
+          <div className="ws-problem-content">
+            {activeQuestion ? <><h1>{activeQuestion.title}</h1><p className="ws-problem-statement">{activeQuestion.statement}</p>{(activeQuestion.examples || []).map((example, index) => <div className="ws-example" key={index}><strong>Example {index + 1}</strong><pre>Input: {example.input}{'\n'}Output: {example.output}</pre></div>)}</> : <div className="ws-console-placeholder">{apiError || 'Loading exam question…'}</div>}
           </div>
         </aside>
 
@@ -493,92 +478,12 @@ export default function Workspace() {
           </div>
         </main>
 
-        {/* ── Right Panel ── */}
-        <aside className="ws-panel">
-          <div className="ws-panel-section">
-            <h3 className="ws-panel-heading">LIVE CONTRIBUTION</h3>
-            {loadingStudents ? (
-              <div className="ws-panel-loading">
-                <div className="ws-panel-spinner" />
-                Loading team data...
-              </div>
-            ) : students.length === 0 ? (
-              <div className="ws-panel-empty">No team members found</div>
-            ) : (
-              students.map((s) => {
-                const badge = getBadgeInfo(s.contribution || 0);
-                const contribution = s.contribution || 0;
-                return (
-                  <div key={s.student} className="ws-contributor-card">
-                    <div className="ws-contributor-header">
-                      <div>
-                        <div className="ws-contributor-name">
-                          {s.student}
-                          {s.student === studentName && (
-                            <span className="ws-contributor-you"> (you)</span>
-                          )}
-                        </div>
-                        <div className={badge.className}>{badge.label}</div>
-                      </div>
-                      <span className="ws-contributor-emoji">{badge.emoji}</span>
-                    </div>
-                    <div className="ws-progress-bar">
-                      <div
-                        className="ws-progress-fill"
-                        style={{
-                          width: `${contribution}%`,
-                          background: contribution >= 30
-                            ? 'linear-gradient(90deg, #6C5CE7, #A855F7)'
-                            : 'linear-gradient(90deg, #3B82F6, #6C5CE7)',
-                        }}
-                      />
-                    </div>
-                    <div className="ws-progress-meta">
-                      <span className="ws-progress-label">{contribution}%</span>
-                      <span className="ws-progress-ks">⌨ {s.keystrokes || 0}</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+        <aside className="ws-panel ws-leaderboard-panel">
+          <div className="ws-panel-section"><h3 className="ws-panel-heading">LIVE LEADERBOARD</h3><p className="ws-leaderboard-caption">Ranked by best score across questions</p>
+            {leaderboard.length ? leaderboard.map((student) => <div className={`ws-rank-row ${student.user_name === studentName ? 'ws-rank-row--you' : ''}`} key={student.user_name}><span className="ws-rank-number">#{student.rank}</span><span className="ws-rank-name">{student.user_name}{student.user_name === studentName ? ' (you)' : ''}</span><strong>{student.score}<small>/{student.max_score}</small></strong></div>) : <div className="ws-panel-empty">No students joined yet</div>}
+            <div className="ws-exam-count">{leaderboard.length} joined · updates every 5 seconds</div>
           </div>
-
-          {/* AI Insights — LIVE from real data */}
-          <div className="ws-panel-section">
-            <div className="ws-ai-header">
-              <span className="ws-ai-dot" />
-              AI INSIGHTS ENABLED
-            </div>
-            <div className="ws-ai-card">
-              <p className="ws-ai-quote">
-                {(() => {
-                  if (students.length === 0) return '"Waiting for team members to start coding..."';
-                  const totalKs = students.reduce((sum, s) => sum + (s.keystrokes || 0), 0);
-                  if (totalKs === 0) return '"Start typing code — AI insights will appear in real-time."';
-                  const sorted = [...students].sort((a, b) => (b.keystrokes || 0) - (a.keystrokes || 0));
-                  const top = sorted[0];
-                  if (sorted.length >= 2) {
-                    const bot = sorted[sorted.length - 1];
-                    return `"${top.student} is leading with ${top.keystrokes} keystrokes (${top.contribution}%), while ${bot.student} has ${bot.keystrokes} keystrokes (${bot.contribution}%). ${Math.abs(top.contribution - bot.contribution) > 30 ? 'Contribution imbalance detected.' : 'Team is well-balanced.'}"`;
-                  }
-                  return `"${top.student} is actively contributing with ${top.keystrokes} keystrokes."`;
-                })()}
-              </p>
-              <div className="ws-ai-meta">
-                LIVE ANALYSIS • {students.filter(s => s.activity !== 'idle').length}/{students.length} ACTIVE
-                <span className="ws-ai-sparkle">✦</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Course Card */}
-          <div className="ws-course-card">
-            <div className="ws-course-icon">🎓</div>
-            <div>
-              <div className="ws-course-name">CS101: {selectedLang.name} Project</div>
-              <div className="ws-course-label">GROUP PROJECT A</div>
-            </div>
-          </div>
+          <div className="ws-panel-section ws-my-score"><h3 className="ws-panel-heading">YOUR PROGRESS</h3>{leaderboard.find((student) => student.user_name === studentName) ? <><strong>#{leaderboard.find((student) => student.user_name === studentName).rank}</strong><span>{leaderboard.find((student) => student.user_name === studentName).score}/{leaderboard.find((student) => student.user_name === studentName).max_score} points</span></> : <p>Submit your first solution to get ranked.</p>}</div>
         </aside>
       </div>
     </div>

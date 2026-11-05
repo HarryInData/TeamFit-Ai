@@ -192,6 +192,27 @@
   overflow: hidden;
 }
 
+.ws-problem-panel {
+  width: 31%;
+  min-width: 280px;
+  max-width: 460px;
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.ws-problem-head { display: flex; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 11px; letter-spacing: .08em; }
+.ws-problem-head strong { color: var(--color-primary-light); letter-spacing: 0; font-size: 13px; }
+.ws-problem-panel select { margin: 12px 16px 0; padding: 9px; background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 6px; color: var(--color-text); }
+.ws-problem-content { padding: 22px 20px; overflow: auto; color: var(--color-text); }
+.ws-problem-content h1 { color: var(--color-text-white); font-size: 21px; margin: 0 0 18px; }
+.ws-problem-statement { white-space: pre-wrap; line-height: 1.65; font-size: 14px; }
+.ws-example { margin-top: 20px; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg); }
+.ws-example strong { color: var(--color-text-white); font-size: 12px; }
+.ws-example pre { white-space: pre-wrap; font: 12px/1.6 var(--font-mono); color: var(--color-text-muted); }
+
 /* ── File Sidebar ── */
 .ws-sidebar {
   width: var(--sidebar-width);
@@ -411,6 +432,30 @@
   gap: var(--space-md);
   padding: var(--space-md);
   flex-shrink: 0;
+}
+.ws-leaderboard-panel { width: 260px; }
+.ws-leaderboard-caption, .ws-exam-count { color: var(--color-text-muted); font-size: 11px; }
+.ws-rank-row { display: flex; align-items: center; gap: 9px; padding: 11px 8px; border-bottom: 1px solid var(--color-border); font-size: 12px; }
+.ws-rank-row--you { background: rgba(108,92,231,.12); border-radius: 6px; }
+.ws-rank-number { width: 25px; color: var(--color-text-muted); font-weight: 700; }
+.ws-rank-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text); }
+.ws-rank-row strong { color: var(--color-text-white); }
+.ws-rank-row small { color: var(--color-text-muted); font-weight: 400; }
+.ws-exam-count { padding-top: 12px; }
+.ws-my-score { border-top: 1px solid var(--color-border); padding-top: 16px; }
+.ws-my-score strong { font-size: 28px; color: var(--color-primary-light); }
+.ws-my-score span, .ws-my-score p { color: var(--color-text-muted); font-size: 12px; margin: 0; }
+
+@media (max-width: 1050px) {
+  .ws-problem-panel { width: 28%; min-width: 240px; }
+  .ws-leaderboard-panel { width: 220px; padding: 12px; }
+}
+@media (max-width: 760px) {
+  .ws-body { overflow: auto; flex-direction: column; }
+  .ws-problem-panel { width: 100%; max-width: none; min-width: 0; max-height: 32vh; }
+  .ws-main { min-height: 55vh; }
+  .ws-leaderboard-panel { width: 100%; flex-direction: row; overflow-x: auto; }
+  .ws-panel-section { min-width: 240px; }
 }
 .ws-panel-section { display: flex; flex-direction: column; gap: var(--space-md); }
 .ws-panel-heading {

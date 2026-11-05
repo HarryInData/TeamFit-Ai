@@ -5,8 +5,9 @@ import HeroSection from "./pages/HeroSection";
 import LoginPage from "./pages/LoginPage";
 import SessionLobby from "./pages/SessionLobby";
 import Workspace from "./pages/Workspace";
-import Dashboard from "./pages/Dashboard";
 import LandingPage from "./pages/LandingPage";
+import StudentDashboard from "./pages/StudentDashboard";
+import ProfessorDashboard from "./pages/ProfessorDashboard";
 
 function ProtectedRoute({ children, allowedRole, requireSession = false }) {
   const { user, loading, sessionId } = useAuth();
@@ -65,7 +66,7 @@ function AppRoutes() {
         path="/session"
         element={
           <ProtectedRoute allowedRole="student">
-            <SessionLobby />
+            <StudentDashboard />
           </ProtectedRoute>
         }
       />
@@ -94,7 +95,7 @@ function AppRoutes() {
         path="/dashboard"
         element={
           <ProtectedRoute allowedRole="professor">
-            <Dashboard />
+            <ProfessorDashboard />
           </ProtectedRoute>
         }
       />
