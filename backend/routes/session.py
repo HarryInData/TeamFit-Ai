@@ -9,7 +9,7 @@ from models.database import (
     list_open_exams, start_session, close_session, auto_idle_stale_students,
     get_exam_question, store_exam_submission, get_exam_leaderboard
 )
-from services.judge0 import execute_code, ExecutionUnavailable, SUPPORTED_LANGUAGES, MAX_SOURCE_BYTES
+from services.render_sandbox import execute_code_cases, ExecutionUnavailable, SUPPORTED_LANGUAGES, MAX_SOURCE_BYTES
 from services.ai_summary import generate_ai_summary
 from middleware.auth import jwt_required, roles_required
 
@@ -282,15 +282,20 @@ def run_question(session_id, question_id):
     tests = all_tests if submit else [case for case in all_tests if not case.get("hidden", True)]
     if not tests:
         return jsonify({"error": "This question has no public test cases to run. Submit your solution when it is ready."}), 400
+    try:
+        case_results = execute_code_cases(
+            code,
+            language_id,
+            [(case["stdin"], case["expected_output"]) for case in tests],
+        )
+    except ExecutionUnavailable as exc:
+        return jsonify({"error": str(exc)}), 503
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
     results = []
     passed = 0
-    for index, case in enumerate(tests, start=1):
-        try:
-            result = execute_code(code, language_id, case["stdin"], case["expected_output"])
-        except ExecutionUnavailable as exc:
-            return jsonify({"error": str(exc)}), 503
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+    for index, result in enumerate(case_results, start=1):
         is_passed = result.get("status") == "Accepted"
         passed += int(is_passed)
         results.append({

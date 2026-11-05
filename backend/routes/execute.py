@@ -1,7 +1,7 @@
 """Authenticated endpoint for isolated source-code execution."""
 
 from flask import Blueprint, request, jsonify
-from services.judge0 import execute_code, ExecutionUnavailable
+from services.render_sandbox import execute_code, ExecutionUnavailable
 from middleware.auth import jwt_required
 
 execute_bp = Blueprint("execute", __name__)
@@ -11,7 +11,7 @@ execute_bp = Blueprint("execute", __name__)
 @jwt_required
 def run_code():
     """
-    Execute code via Judge0. This reports execution status only; assignment
+    Execute code in an isolated Render Sandbox. This reports execution status only; assignment
     grading requires explicit test cases and is not implemented.
     Body: { code, language_id, student }
     """
@@ -29,7 +29,7 @@ def run_code():
     if isinstance(language_id, bool) or not isinstance(language_id, int) or language_id not in {50, 54, 62, 63, 71}:
         return jsonify({"error": "Unsupported language"}), 400
 
-    # Execute via Judge0
+    # Execute in a disposable, network-disabled Render microVM.
     try:
         result = execute_code(code, language_id)
     except ValueError as exc:

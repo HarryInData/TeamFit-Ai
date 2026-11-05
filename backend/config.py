@@ -25,17 +25,18 @@ class Config:
 
     # ── AI ──
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+    # Keep this configurable because hosted model IDs can be retired by providers.
+    GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
     # ── Firebase Authentication ──
     FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
     FIREBASE_WEB_API_KEY = os.environ.get("FIREBASE_WEB_API_KEY", "")
 
-    # ── Code Execution ──
-    JUDGE0_API_KEY = os.environ.get("JUDGE0_API_KEY", "")
-    JUDGE0_URL = os.environ.get("JUDGE0_URL", "https://judge0-ce.p.rapidapi.com")
-    JUDGE0_HOST = os.environ.get("JUDGE0_HOST", "judge0-ce.p.rapidapi.com")
-    JUDGE0_AUTH_HEADER = os.environ.get("JUDGE0_AUTH_HEADER", "")
-    JUDGE0_AUTH_TOKEN = os.environ.get("JUDGE0_AUTH_TOKEN", "")
+    # ── Isolated code execution ──
+    RENDER_API_KEY = os.environ.get("RENDER_API_KEY", "")
+    RENDER_WORKSPACE_ID = os.environ.get("RENDER_WORKSPACE_ID", "")
+    RENDER_SANDBOX_GROUP_ID = os.environ.get("RENDER_SANDBOX_GROUP_ID", "")
+    RENDER_SANDBOX_SNAPSHOT_ID = os.environ.get("RENDER_SANDBOX_SNAPSHOT_ID", "")
 
     # ── Server ──
     FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
@@ -60,7 +61,5 @@ class Config:
                 raise RuntimeError("Production CORS_ORIGINS must use HTTPS")
             if cls.FLASK_DEBUG:
                 raise RuntimeError("FLASK_DEBUG must be false in production")
-            if not cls.JUDGE0_URL.startswith("https://"):
-                raise RuntimeError("JUDGE0_URL must use HTTPS in production")
             if not cls.FIREBASE_PROJECT_ID or not cls.FIREBASE_WEB_API_KEY:
                 raise RuntimeError("FIREBASE_PROJECT_ID and FIREBASE_WEB_API_KEY must be configured in production")

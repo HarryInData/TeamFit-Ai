@@ -40,7 +40,7 @@ pip install -q -r requirements.txt
 # Copy env if not exists
 if [ ! -f ".env" ]; then
     cp .env.example .env 2>/dev/null || true
-    echo "⚠️  Created backend/.env — update JUDGE0_API_KEY if needed"
+    echo "⚠️  Created backend/.env — configure Render Sandbox credentials before running code"
 fi
 
 # Start Flask
