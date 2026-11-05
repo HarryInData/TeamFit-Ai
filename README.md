@@ -82,7 +82,7 @@ Execution responses report process status and output. They are not assignment gr
 Set `APP_ENV=production`, a random `SECRET_KEY` of at least 32 characters,
 PostgreSQL `DATABASE_URL`, and explicit HTTPS frontend origins in
 `CORS_ORIGINS`. Configure Firebase Admin credentials for Google sign-in and
-configure Render Sandboxes as described in [backend/SANDBOX.md](backend/SANDBOX.md).
+configure Judge0 CE through RapidAPI as described in [backend/JUDGE0.md](backend/JUDGE0.md).
 Production startup fails when required secret/database/CORS configuration is
 missing. Run the app with Gunicorn behind a TLS-terminating reverse proxy.
 
