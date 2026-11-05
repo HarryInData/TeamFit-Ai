@@ -11,8 +11,8 @@ execute_bp = Blueprint("execute", __name__)
 @jwt_required
 def run_code():
     """
-    Execute code in an isolated Judge0 sandbox. This reports execution status only; assignment
-    grading requires explicit test cases and is not implemented.
+    Execute code in the isolated Piston runner. This endpoint reports execution
+    output and diagnostics; exam grading is handled by the session route.
     Body: { code, language_id, student }
     """
     data = request.get_json(silent=True)
@@ -29,7 +29,7 @@ def run_code():
     if isinstance(language_id, bool) or not isinstance(language_id, int) or language_id not in {50, 54, 62, 63, 71}:
         return jsonify({"error": "Unsupported language"}), 400
 
-    # Execute in a disposable, network-disabled Render microVM.
+    # Execute in the separately hosted, network-disabled Piston sandbox.
     try:
         result = execute_code(code, language_id)
     except ValueError as exc:
