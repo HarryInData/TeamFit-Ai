@@ -459,7 +459,13 @@ export default function Workspace() {
                 </div>
               ) : consoleTab === 'problems' ? (
                 <div className="ws-console-placeholder">
-                  No problems detected in {activeFile}.
+                  {!output
+                    ? 'Run the code to see compiler and runtime errors. Static analysis is not configured.'
+                    : output.error_type
+                      ? `${output.error_type} error (${output.status}): ${output.stderr || 'No error details provided.'}`
+                      : output.status === 'Accepted'
+                        ? 'Execution completed without a reported error. Static analysis is not configured.'
+                        : `Execution status: ${output.status || 'Unknown'}`}
                 </div>
               ) : running ? (
                 <div className="ws-console-running">
