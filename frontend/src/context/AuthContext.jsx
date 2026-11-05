@@ -1,47 +1,47 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import { useState } from 'react';
+import { signInWithPopup, signOut as firebaseSignOut } from '@firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { googleLogin } from '../services/api';
+import { AuthContext } from './auth';
 
-const AuthContext = createContext(null);
-
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
-  const [sessionId, setSessionId] = useState(null);
-  const [sessionCode, setSessionCode] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Restore login from localStorage
+function readInitialState() {
+  let user = null;
+  let token = null;
+  try {
     const savedUser = localStorage.getItem('teamfit_user');
     const savedToken = localStorage.getItem('teamfit_token');
     if (savedUser && savedToken) {
-      setUser(JSON.parse(savedUser));
-      setToken(savedToken);
+      const parsedUser = JSON.parse(savedUser);
+      if (parsedUser && typeof parsedUser === 'object' && typeof savedToken === 'string') {
+        user = parsedUser;
+        token = savedToken;
+      }
     }
+  } catch {
+    localStorage.removeItem('teamfit_user');
+    localStorage.removeItem('teamfit_token');
+  }
 
-    // Only restore session if this is the SAME tab (not a new one)
-    // sessionStorage is unique per tab and clears on close
-    const isReturningTab = sessionStorage.getItem('teamfit_tab_active');
-    if (isReturningTab) {
-      const savedSession = localStorage.getItem('teamfit_session_id');
-      const savedCode = localStorage.getItem('teamfit_session_code');
-      if (savedSession) setSessionId(savedSession);
-      if (savedCode) setSessionCode(savedCode);
-    } else {
-      // New tab — clear old session so user starts fresh at lobby
-      sessionStorage.setItem('teamfit_tab_active', 'true');
-      localStorage.removeItem('teamfit_session_id');
-      localStorage.removeItem('teamfit_session_code');
-    }
+  let sessionId = null;
+  let sessionCode = null;
+  if (sessionStorage.getItem('teamfit_tab_active')) {
+    sessionId = localStorage.getItem('teamfit_session_id');
+    sessionCode = localStorage.getItem('teamfit_session_code');
+  } else {
+    sessionStorage.setItem('teamfit_tab_active', 'true');
+    localStorage.removeItem('teamfit_session_id');
+    localStorage.removeItem('teamfit_session_code');
+  }
+  return { user, token, sessionId, sessionCode };
+}
 
-    setLoading(false);
-  }, []);
+export function AuthProvider({ children }) {
+  const [state, setState] = useState(readInitialState);
+  const { user, token, sessionId, sessionCode } = state;
+  const loading = false;
 
   function loginUser(userData, tokenValue) {
-    setUser(userData);
-    setToken(tokenValue);
+    setState((previous) => ({ ...previous, user: userData, token: tokenValue }));
     localStorage.setItem('teamfit_user', JSON.stringify(userData));
     localStorage.setItem('teamfit_token', tokenValue);
   }
@@ -60,24 +60,19 @@ export function AuthProvider({ children }) {
   }
 
   function setSession(id, code) {
-    setSessionId(id);
-    setSessionCode(code);
+    setState((previous) => ({ ...previous, sessionId: id, sessionCode: code }));
     localStorage.setItem('teamfit_session_id', id);
     localStorage.setItem('teamfit_session_code', code);
   }
 
   function clearSession() {
-    setSessionId(null);
-    setSessionCode(null);
+    setState((previous) => ({ ...previous, sessionId: null, sessionCode: null }));
     localStorage.removeItem('teamfit_session_id');
     localStorage.removeItem('teamfit_session_code');
   }
 
   function logout() {
-    setUser(null);
-    setToken(null);
-    setSessionId(null);
-    setSessionCode(null);
+    setState({ user: null, token: null, sessionId: null, sessionCode: null });
     localStorage.removeItem('teamfit_user');
     localStorage.removeItem('teamfit_token');
     localStorage.removeItem('teamfit_session_id');
@@ -97,10 +92,4 @@ export function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
 }

@@ -32,7 +32,9 @@ logger = logging.getLogger("teamfit")
 
 
 def create_app():
+    Config.validate()
     app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = 128 * 1024
     app.config.from_object(Config)
 
     # ── CORS — allow configured origins with full preflight support ──
@@ -51,8 +53,10 @@ def create_app():
         seed_users()
         seed_students()
         logger.info("Database initialized successfully")
-    except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
+    except Exception:
+        logger.exception("Database initialization failed")
+        if Config.IS_PRODUCTION:
+            raise
 
     # ── Register all blueprints under /api ──
     app.register_blueprint(auth_bp, url_prefix="/api")
@@ -65,11 +69,19 @@ def create_app():
     # ── Health check ──
     @app.route("/api/health")
     def health():
-        from models.database import _use_postgres
+        from models.database import _use_postgres, get_db
+        try:
+            conn = get_db()
+            conn.close()
+            db_status = "connected"
+        except Exception:
+            logger.exception("Health check database connection failed")
+            return jsonify({"status": "degraded", "service": "TeamFit AI", "db": "unavailable"}), 503
         return jsonify({
             "status": "operational",
             "service": "TeamFit AI",
             "db": "PostgreSQL" if _use_postgres else "SQLite",
+            "db_status": db_status,
             "auth": "JWT",
         })
 
@@ -116,4 +128,4 @@ if __name__ == "__main__":
     print("[#] Auth: JWT (Bearer token)")
     print(f"[=] Database: {db_label}")
     print(f"[~] CORS Origins: {Config.CORS_ORIGINS}")
-    app.run(debug=Config.FLASK_DEBUG, port=port, host="0.0.0.0")
+    app.run(debug=Config.FLASK_DEBUG, port=port, host="127.0.0.1")

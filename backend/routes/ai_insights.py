@@ -8,23 +8,31 @@ from flask import Blueprint, request, jsonify
 from models.database import get_all_students
 from services.ai_engine import execute_ai_analysis
 from config import Config
+from middleware.auth import roles_required
 
 ai_insights_bp = Blueprint("ai_insights", __name__)
 
 
 @ai_insights_bp.route("/ai-insights", methods=["POST"])
+@roles_required("professor")
 def get_ai_insights():
     """POST /api/ai-insights — accepts optional student data, or uses DB."""
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
 
     student_data = data.get("students", None)
+    if student_data is not None and (not isinstance(student_data, list) or len(student_data) > 500):
+        return jsonify({"error": "students must be a list of at most 500 records"}), 400
 
     if not student_data:
         # Pull live data from SQLite
         raw = get_all_students()
         student_data = [
             {"student": s["name"], "keystrokes": s["keystrokes"],
-             "score": s["score"], "activity": s["activity"],
+             "activity": s["activity"],
              "contribution": s["contribution"]}
             for s in raw
         ]
@@ -42,12 +50,13 @@ def get_ai_insights():
 
 
 @ai_insights_bp.route("/ai-insights", methods=["GET"])
+@roles_required("professor")
 def get_ai_insights_live():
     """GET /api/ai-insights — uses current live DB data."""
     raw = get_all_students()
     student_data = [
         {"student": s["name"], "keystrokes": s["keystrokes"],
-         "score": s["score"], "activity": s["activity"],
+         "activity": s["activity"],
          "contribution": s["contribution"]}
         for s in raw
     ]

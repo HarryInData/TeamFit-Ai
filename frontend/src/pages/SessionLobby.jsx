@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/auth';
 import { createSession, joinSession, getSessionMembers } from '../services/api';
 import './SessionLobby.css';
 
@@ -17,15 +17,9 @@ export default function SessionLobby() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const autoJoinAttempted = useRef(false);
 
   const studentName = user?.name || 'Student';
-
-  // Auto-join if URL has a code
-  useEffect(() => {
-    if (urlCode && !sessionId) {
-      handleJoin(urlCode);
-    }
-  }, [urlCode]);
 
   // If already in a session, poll members
   const pollMembers = useCallback(async () => {
@@ -33,7 +27,7 @@ export default function SessionLobby() {
     try {
       const data = await getSessionMembers(sessionId);
       setMembers(data.members || []);
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore polling errors */ }
   }, [sessionId]);
 
   useEffect(() => {
@@ -59,7 +53,7 @@ export default function SessionLobby() {
     }
   }
 
-  async function handleJoin(codeOverride) {
+  const handleJoin = useCallback(async (codeOverride) => {
     const code = (codeOverride || joinCode).trim().toUpperCase();
     if (!code) { setError('Enter a session code'); return; }
     setLoading(true);
@@ -74,7 +68,15 @@ export default function SessionLobby() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [joinCode, setSession]);
+
+  // Auto-join once when a fresh invite URL is opened.
+  useEffect(() => {
+    if (urlCode && !sessionId && !autoJoinAttempted.current) {
+      autoJoinAttempted.current = true;
+      handleJoin(urlCode);
+    }
+  }, [urlCode, sessionId, handleJoin]);
 
   function handleCopy() {
     const code = createdSession?.join_code || sessionCode;

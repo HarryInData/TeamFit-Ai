@@ -2,6 +2,30 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 
+class Particle {
+  constructor(getBounds) {
+    this.getBounds = getBounds;
+    this.reset();
+  }
+
+  reset() {
+    const { width, height } = this.getBounds();
+    this.x = Math.random() * width;
+    this.y = Math.random() * height;
+    this.vx = (Math.random() - 0.5) * 0.3;
+    this.vy = (Math.random() - 0.5) * 0.3;
+    this.r = Math.random() * 1.5 + 0.5;
+  }
+
+  update() {
+    const { width, height } = this.getBounds();
+    this.x += this.vx;
+    this.y += this.vy;
+    if (this.x < 0 || this.x > width) this.vx *= -1;
+    if (this.y < 0 || this.y > height) this.vy *= -1;
+  }
+}
+
 export default function LandingPage() {
   const navigate = useNavigate();
 
@@ -52,26 +76,8 @@ export default function LandingPage() {
     }
     resize();
     window.addEventListener("resize", resize);
-    class Particle {
-      constructor() {
-        this.reset();
-      }
-      reset() {
-        this.x = Math.random() * W;
-        this.y = Math.random() * H;
-        this.vx = (Math.random() - 0.5) * 0.3;
-        this.vy = (Math.random() - 0.5) * 0.3;
-        this.r = Math.random() * 1.5 + 0.5;
-        this.a = Math.random();
-      }
-      update() {
-        this.x += this.vx;
-        this.y += this.vy;
-        if (this.x < 0 || this.x > W) this.vx *= -1;
-        if (this.y < 0 || this.y > H) this.vy *= -1;
-      }
-    }
-    for (let i = 0; i < 90; i++) particles.push(new Particle());
+    const getBounds = () => ({ width: W, height: H });
+    for (let i = 0; i < 90; i++) particles.push(new Particle(getBounds));
     const COLORS = [
       "rgba(192,132,252,",
       "rgba(244,114,182,",

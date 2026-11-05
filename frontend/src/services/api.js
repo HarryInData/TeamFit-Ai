@@ -32,7 +32,7 @@ async function apiFetch(url, options = {}) {
   let res;
   try {
     res = await fetch(url, options);
-  } catch (networkErr) {
+  } catch {
     throw new Error('Server unavailable. Please check your connection.');
   }
 
@@ -84,11 +84,11 @@ export async function getStudents() {
   });
 }
 
-export async function updateKeystrokes(student, keystrokes, activity) {
+export async function updateKeystrokes(student, keystrokes, activity, sessionId) {
   return apiFetch(`${API_BASE}/students`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ student, keystrokes, score: 0, activity }),
+    body: JSON.stringify({ student, keystrokes, activity, session_id: sessionId }),
   });
 }
 
