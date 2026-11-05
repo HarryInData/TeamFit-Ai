@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
   const [state, setState] = useState(readInitialState);
   const { user, token, sessionId, sessionCode } = state;
   const loading = false;
+  const googleConfigured = Boolean(auth && googleProvider);
 
   function loginUser(userData, tokenValue) {
     setState((previous) => ({ ...previous, user: userData, token: tokenValue }));
@@ -87,6 +88,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, token, loading,
+      googleConfigured,
       sessionId, sessionCode,
       loginUser, logout,
       signInWithGoogle,

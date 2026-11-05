@@ -77,9 +77,10 @@ export default function Workspace() {
   const keystrokeRef = useRef(0);
   const lastSyncRef = useRef(0);
 
-  // Current code for editor
-  const code = questionCodes[activeQuestionId] ?? activeQuestion?.starter_code ?? selectedLang.template;
   const activeQuestion = questions.find((question) => question.id === activeQuestionId) || questions[0];
+  // Current code for the selected exam question.
+  const codeKey = `${activeQuestionId}:${selectedLang.id}`;
+  const code = questionCodes[codeKey] ?? activeQuestion?.starter_code ?? '';
 
   const refreshExam = useCallback(async () => {
     if (!sessionId) return;
@@ -101,7 +102,6 @@ export default function Workspace() {
     setSelectedLang(lang);
     const newFiles = buildFilesForLang(lang);
     setFiles(newFiles.files);
-    setQuestionCodes({});
     setActiveFile(`main${lang.ext}`);
     setOutput(null);
     setShowLangMenu(false);
@@ -171,7 +171,7 @@ export default function Workspace() {
   // ── File switching ──
   // ── Editor change handler ──
   function handleEditorChange(value) {
-    setQuestionCodes((prev) => ({ ...prev, [activeQuestionId]: value || '' }));
+    setQuestionCodes((prev) => ({ ...prev, [codeKey]: value || '' }));
     keystrokeRef.current += 1;
     setKeystrokes(keystrokeRef.current);
     setActivity('typing');

@@ -4,9 +4,12 @@ import { useAuth } from '../context/auth';
 import { getStudentDashboard, joinSession } from '../services/api';
 import './ExamPortal.css';
 
-function formatMark(exam) {
+function formatMark(exam, submissions) {
+  const hasSubmission = submissions.some((submission) => submission.session_id === exam.id);
+  if (exam.status === 'open' && !hasSubmission) return 'In progress · no submissions yet';
   if (!exam.possible_score) return 'Not graded';
-  return `${exam.earned_score}/${exam.possible_score} (${Math.round(exam.earned_score * 100 / exam.possible_score)}%)`;
+  const progress = exam.status === 'open' ? ' · in progress' : '';
+  return `${exam.earned_score}/${exam.possible_score} (${Math.round(exam.earned_score * 100 / exam.possible_score)}%)${progress}`;
 }
 
 export default function StudentDashboard() {
@@ -38,6 +41,9 @@ export default function StudentDashboard() {
   }
 
   const exams = data?.exams || [];
+  const completedExams = exams.filter((exam) => exam.status === 'closed');
+  const completedEarned = completedExams.reduce((total, exam) => total + (exam.earned_score || 0), 0);
+  const completedPossible = completedExams.reduce((total, exam) => total + (exam.possible_score || 0), 0);
   return (
     <main className="portal-shell">
       <header className="portal-header">
@@ -51,8 +57,8 @@ export default function StudentDashboard() {
       {error && <div className="portal-alert">{error}</div>}
 
       <section className="portal-metrics">
-        <article><span>Overall marks</span><strong>{data?.possible_score ? `${data.earned_score}/${data.possible_score}` : '—'}</strong></article>
-        <article><span>Completed exams</span><strong>{exams.filter((exam) => exam.status === 'closed').length}</strong></article>
+        <article><span>Overall marks</span><strong>{completedPossible ? `${completedEarned}/${completedPossible}` : '—'}</strong></article>
+        <article><span>Completed exams</span><strong>{completedExams.length}</strong></article>
         <article><span>Exams joined</span><strong>{exams.length}</strong></article>
       </section>
 
@@ -79,7 +85,7 @@ export default function StudentDashboard() {
           <div className="portal-list">
             {exams.map((exam) => <article className="portal-row" key={exam.id}>
               <div><h3>{exam.title}</h3><p>{exam.created_by} · {exam.questions_total} questions · {exam.status}</p></div>
-              <strong className="portal-mark">{formatMark(exam)}</strong>
+              <strong className="portal-mark">{formatMark(exam, data?.submissions || [])}</strong>
             </article>)}
             {!exams.length && <p className="portal-empty">Your marks report will appear here after you join an exam.</p>}
           </div>

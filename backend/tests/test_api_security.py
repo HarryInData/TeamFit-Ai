@@ -1,6 +1,7 @@
 import sys
 import unittest
 import uuid
+import tempfile
 from unittest.mock import patch
 from pathlib import Path
 
@@ -9,14 +10,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app import create_app
 from config import Config
 from middleware.auth import create_token, decode_token
+from models import database
 
 
 class ApiSecurityTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls._original_sqlite_path = database._SQLITE_PATH
+        cls._test_database_dir = tempfile.TemporaryDirectory(prefix="teamfit-api-tests-")
+        database._SQLITE_PATH = str(Path(cls._test_database_dir.name) / "teamfit-test.db")
         cls.app = create_app()
         cls.app.config.update(TESTING=True)
         cls.client = cls.app.test_client()
+
+    @classmethod
+    def tearDownClass(cls):
+        database._SQLITE_PATH = cls._original_sqlite_path
+        cls._test_database_dir.cleanup()
 
     def test_private_api_rejects_anonymous_requests(self):
         self.assertEqual(self.client.get("/api/dashboard").status_code, 401)
@@ -90,6 +100,15 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(question_result.status_code, 200)
         self.assertEqual(question_result.json["questions"][0]["statement"], question["statement"])
         self.assertNotIn("test_cases", question_result.json["questions"][0])
+        question_id = question_result.json["questions"][0]["id"]
+        with patch("routes.session.execute_code", return_value={"status": "Accepted", "stdout": "5\n", "stderr": ""}):
+            submission = self.client.post(
+                f"/api/session/{session_id}/question/{question_id}/run",
+                json={"code": "print(2 + 3)", "language_id": 71}, headers=headers,
+            )
+        self.assertEqual(submission.status_code, 200)
+        self.assertEqual(submission.json["score"], 100)
+        self.assertEqual(submission.json["passed_tests"], 1)
         closed = self.client.post(f"/api/session/{session_id}/close", headers=professor_headers)
         self.assertEqual(closed.status_code, 200)
         self.assertEqual(closed.json["status"], "closed")

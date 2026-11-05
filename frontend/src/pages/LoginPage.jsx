@@ -56,7 +56,7 @@ function ShieldIcon() {
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { loginUser, signInWithGoogle } = useAuth();
+  const { loginUser, signInWithGoogle, googleConfigured } = useAuth();
 
   // Screen: "picker" | "student" | "professor"
   const initialRole = searchParams.get("role");
@@ -213,12 +213,12 @@ export default function LoginPage() {
                 <span className="role-corner-badge">LEARNER</span>
                 <div className="role-icon">🎓</div>
                 <h3>Student</h3>
-                <p>Track your contributions, view team analytics, and get AI-powered feedback on your collaboration.</p>
+                <p>Join practical exams, solve coding questions, and review your marks and progress.</p>
                 <div className="role-features">
-                  <div className="role-feat"><div className="role-feat-dot" /> Real-time contribution dashboard</div>
-                  <div className="role-feat"><div className="role-feat-dot" /> Peer evaluation & self-assessment</div>
-                  <div className="role-feat"><div className="role-feat-dot" /> Team health insights</div>
-                  <div className="role-feat"><div className="role-feat-dot" /> AI-generated progress reports</div>
+                  <div className="role-feat"><div className="role-feat-dot" /> Browse open practical exams</div>
+                  <div className="role-feat"><div className="role-feat-dot" /> Review marks by question</div>
+                  <div className="role-feat"><div className="role-feat-dot" /> Code in an exam workspace</div>
+                  <div className="role-feat"><div className="role-feat-dot" /> See the live session leaderboard</div>
                 </div>
                 <button className="role-enter-btn" id="enter-student-btn">Enter as Student →</button>
               </div>
@@ -233,12 +233,12 @@ export default function LoginPage() {
                 <span className="role-corner-badge">EDUCATOR</span>
                 <div className="role-icon">🏛</div>
                 <h3>Professor</h3>
-                <p>Manage cohorts, evaluate teams fairly, and get deep AI insights on individual contribution patterns.</p>
+                <p>Create practical exams, publish questions to students, and review their test-based results.</p>
                 <div className="role-features">
-                  <div className="role-feat"><div className="role-feat-dot" /> Class & cohort management</div>
-                  <div className="role-feat"><div className="role-feat-dot" /> AI-driven grading recommendations</div>
-                  <div className="role-feat"><div className="role-feat-dot" /> Individual contribution heatmaps</div>
-                  <div className="role-feat"><div className="role-feat-dot" /> Export reports for administration</div>
+                  <div className="role-feat"><div className="role-feat-dot" /> Create exams with hidden test cases</div>
+                  <div className="role-feat"><div className="role-feat-dot" /> Publish and close exam sessions</div>
+                  <div className="role-feat"><div className="role-feat-dot" /> Review student marks and test outcomes</div>
+                  <div className="role-feat"><div className="role-feat-dot" /> Download ranked results as CSV</div>
                 </div>
                 <button className="role-enter-btn" id="enter-professor-btn">Enter as Professor →</button>
               </div>
@@ -255,20 +255,15 @@ export default function LoginPage() {
                   <span className="brand-tag">🎓 Student Portal</span>
                   <div>
                     <h2 className="brand-heading">
-                      Your team.<br />Your contribution.<br />
-                      <span className="brand-heading-accent--student">Your grade.</span>
+                      Your practical.<br />Your solution.<br />
+                      <span className="brand-heading-accent--student">Your progress.</span>
                     </h2>
                   </div>
-                  <p className="brand-desc">Get a transparent view of how you and your teammates are performing — powered by AI, not guesswork.</p>
-                  <div className="brand-stats">
-                    <div className="brand-stat"><span className="brand-stat-num">12k+</span><span className="brand-stat-lbl">Students</span></div>
-                    <div className="brand-stat"><span className="brand-stat-num">98%</span><span className="brand-stat-lbl">Accuracy</span></div>
-                    <div className="brand-stat"><span className="brand-stat-num">4.9★</span><span className="brand-stat-lbl">Rating</span></div>
-                  </div>
+                  <p className="brand-desc">Join exams from your professor, write and submit code, then review your marks by question.</p>
                   <div className="brand-perks">
-                    <div className="brand-perk"><div className="brand-perk-dot" /> Submit peer evaluations in seconds</div>
-                    <div className="brand-perk"><div className="brand-perk-dot" /> See your AI-generated contribution score</div>
-                    <div className="brand-perk"><div className="brand-perk-dot" /> Get notified when grades update</div>
+                    <div className="brand-perk"><div className="brand-perk-dot" /> Find currently open practical exams</div>
+                    <div className="brand-perk"><div className="brand-perk-dot" /> See question results and session rank</div>
+                    <div className="brand-perk"><div className="brand-perk-dot" /> Track marks across your exam sessions</div>
                   </div>
                 </div>
               </div>
@@ -286,7 +281,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Google Sign-in — always visible */}
-                <button type="button" className="login-google-btn" onClick={handleGoogle} disabled={googleLoading || loading} id="student-google-btn">
+                <button type="button" className="login-google-btn" onClick={handleGoogle} disabled={googleLoading || loading || !googleConfigured} id="student-google-btn">
                   {googleLoading ? (
                     <div className="login-google-spinner" />
                   ) : (
@@ -296,6 +291,7 @@ export default function LoginPage() {
                     </>
                   )}
                 </button>
+                {!googleConfigured && <p className="login-google-note">Google sign-in is not configured for this app yet. Use email and password.</p>}
 
                 <div className="login-or-row"><div className="login-or-line" /><span>or {isSignUp ? "sign up" : "sign in"} with email</span><div className="login-or-line" /></div>
 
@@ -382,7 +378,7 @@ export default function LoginPage() {
 
                 <div className="login-sec-row">
                   <ShieldIcon />
-                  Encrypted · FERPA Compliant
+                  Sign in securely with your account
                 </div>
               </form>
             </div>
@@ -398,20 +394,15 @@ export default function LoginPage() {
                   <span className="brand-tag">🏛 Professor Portal</span>
                   <div>
                     <h2 className="brand-heading">
-                      Grade fairly.<br />Every time.<br />
-                      <span className="brand-heading-accent--professor">AI-guaranteed.</span>
+                      Set the exam.<br />Review results.<br />
+                      <span className="brand-heading-accent--professor">Support your class.</span>
                     </h2>
                   </div>
-                  <p className="brand-desc">Access contribution heatmaps, peer review data, and AI recommendations — all in one command center.</p>
-                  <div className="brand-stats">
-                    <div className="brand-stat"><span className="brand-stat-num">340+</span><span className="brand-stat-lbl">Educators</span></div>
-                    <div className="brand-stat"><span className="brand-stat-num">50k+</span><span className="brand-stat-lbl">Evaluations</span></div>
-                    <div className="brand-stat"><span className="brand-stat-num">99.2%</span><span className="brand-stat-lbl">Uptime</span></div>
-                  </div>
+                  <p className="brand-desc">Create question sets, open exam sessions, and review student marks from test-case results.</p>
                   <div className="brand-perks">
-                    <div className="brand-perk"><div className="brand-perk-dot" /> Manage all your class cohorts</div>
-                    <div className="brand-perk"><div className="brand-perk-dot" /> AI flags free-riders automatically</div>
-                    <div className="brand-perk"><div className="brand-perk-dot" /> Export to LMS with one click</div>
+                    <div className="brand-perk"><div className="brand-perk-dot" /> Keep questions and hidden tests together</div>
+                    <div className="brand-perk"><div className="brand-perk-dot" /> Publish and close practical sessions</div>
+                    <div className="brand-perk"><div className="brand-perk-dot" /> Download marks and ranking as CSV</div>
                   </div>
                 </div>
               </div>
@@ -429,7 +420,7 @@ export default function LoginPage() {
                 </div>
 
                 {/* Google Sign-in — always visible */}
-                <button type="button" className="login-google-btn" onClick={handleGoogle} disabled={googleLoading || loading} id="professor-google-btn">
+                <button type="button" className="login-google-btn" onClick={handleGoogle} disabled={googleLoading || loading || !googleConfigured} id="professor-google-btn">
                   {googleLoading ? (
                     <div className="login-google-spinner" />
                   ) : (
@@ -439,6 +430,7 @@ export default function LoginPage() {
                     </>
                   )}
                 </button>
+                {!googleConfigured && <p className="login-google-note">Google sign-in is not configured for this app yet. Use email and password.</p>}
 
                 <div className="login-or-row"><div className="login-or-line" /><span>or {isSignUp ? "sign up" : "sign in"} with email</span><div className="login-or-line" /></div>
 
@@ -525,7 +517,7 @@ export default function LoginPage() {
 
                 <div className="login-sec-row">
                   <ShieldIcon />
-                  SSO Ready · SOC 2 Compliant
+                  Sign in securely with your account
                 </div>
               </form>
             </div>

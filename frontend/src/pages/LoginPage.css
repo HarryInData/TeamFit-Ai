@@ -918,6 +918,7 @@
 }
 
 /* ── Google Button ── */
+.login-google-note { margin: -8px 0 12px; color: var(--color-text-muted, #77748c); font-size: 12px; line-height: 1.45; text-align: center; }
 .login-google-btn {
   width: 100%;
   padding: 12px 16px;

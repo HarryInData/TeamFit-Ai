@@ -766,11 +766,14 @@ def list_exam_questions(session_id: str, include_tests: bool = False) -> list:
 def list_open_exams() -> list:
     conn = get_db()
     rows = _fetchall(conn,
-        "SELECT id, title, join_code, created_by, created_at FROM sessions WHERE status = 'open' ORDER BY created_at DESC"
+        """SELECT id, title, join_code, created_by, created_at FROM sessions s
+           WHERE status = 'open' AND EXISTS (
+             SELECT 1 FROM exam_questions q WHERE q.session_id = s.id
+           ) ORDER BY created_at DESC"""
     )
     for row in rows:
         count = _fetchone(conn,
-            f"SELECT COUNT(*) AS count FROM session_members WHERE session_id = {_ph()}", (row["id"],)
+            f"SELECT COUNT(*) AS count FROM session_members WHERE session_id = {_ph()} AND role != 'professor'", (row["id"],)
         )
         row["member_count"] = count["count"] if count else 0
     conn.close()
@@ -895,19 +898,23 @@ def get_student_exam_progress(student_name: str) -> dict:
 
 
 def get_all_sessions(created_by: str = None) -> list:
-    """List sessions, optionally restricted to their professor owner."""
+    """List professor-authored practical exams, optionally restricted to their owner."""
     conn = get_db()
     if created_by:
         rows = _fetchall(conn,
-            f"SELECT * FROM sessions WHERE created_by = {_ph()} ORDER BY created_at DESC",
+            f"""SELECT * FROM sessions s WHERE created_by = {_ph()}
+                AND EXISTS (SELECT 1 FROM exam_questions q WHERE q.session_id = s.id)
+                ORDER BY created_at DESC""",
             (created_by,),
         )
     else:
-        rows = _fetchall(conn, "SELECT * FROM sessions ORDER BY created_at DESC")
+        rows = _fetchall(conn,
+            "SELECT * FROM sessions s WHERE EXISTS (SELECT 1 FROM exam_questions q WHERE q.session_id = s.id) ORDER BY created_at DESC"
+        )
     result = []
     for session in rows:
         members = _fetchall(conn,
-            f"SELECT user_name FROM session_members WHERE session_id = {_ph()}", (session["id"],)
+            f"SELECT user_name FROM session_members WHERE session_id = {_ph()} AND role != 'professor'", (session["id"],)
         )
         session["members"] = [m["user_name"] for m in members]
         session["member_count"] = len(session["members"])

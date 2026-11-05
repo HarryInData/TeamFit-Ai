@@ -35,8 +35,8 @@ The repository has a usable React/Flask prototype and now has safer authenticati
 
 ## Verification evidence
 
-- Backend unit/API tests: 14 passed before the latest session-close and breakdown additions; rerun from the current checkout.
+- Backend unit/API tests: 14 passing, including isolated temporary-database tests for roles, exam lifecycle, hidden tests, scoring, and sandbox limits.
 - Frontend ESLint and Vite production build: passing for the dashboard and workspace refactor.
 - `npm install` reported zero vulnerabilities during dependency installation. A later standalone `npm audit` could not contact the npm audit endpoint because the environment returned `EAI_AGAIN`; rerun it in connected CI.
 - No live Judge0 service, Firebase production project, or PostgreSQL production environment was available for integration verification.
-- The browser's existing Flask process is stale: its logs show `/api/student/dashboard` returning 404 and its session-create route still makes legacy open rooms without exam questions. Restart it from this checkout before using the live app. The shell Python environment in this task lacks Flask and python-dotenv, so that running process could not be restarted here.
+- The browser audit initially found a stale Flask process returning 404 for `/api/student/dashboard`; it was restarted from this checkout. The live flow then passed professor exam creation and publishing, student exam discovery and join, problem/editor/leaderboard rendering, and visible failure when Judge0 is not configured. An end-to-end accepted submission still requires Judge0 credentials.
