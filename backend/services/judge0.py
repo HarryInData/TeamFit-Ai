@@ -30,6 +30,8 @@ def execute_code(source_code: str, language_id: int = 71, stdin: str = "",
     if expected_output is not None and (not isinstance(expected_output, str) or len(expected_output.encode("utf-8")) > 10_000):
         raise ValueError("Expected output is too large")
 
+    if not isinstance(Config.PISTON_URL, str) or not Config.PISTON_URL.strip():
+        raise ExecutionUnavailable("Isolated code runner is not configured")
     base_url = Config.PISTON_URL.rstrip("/")
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     if Config.PISTON_AUTH_HEADER and Config.PISTON_AUTH_TOKEN:

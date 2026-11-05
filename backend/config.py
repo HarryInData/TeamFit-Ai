@@ -33,7 +33,7 @@ class Config:
     FIREBASE_WEB_API_KEY = os.environ.get("FIREBASE_WEB_API_KEY", "")
 
     # ── Isolated code execution (self-hosted Piston) ──
-    PISTON_URL = os.environ.get("PISTON_URL", "http://127.0.0.1:2000")
+    PISTON_URL = os.environ.get("PISTON_URL", "")
     PISTON_AUTH_HEADER = os.environ.get("PISTON_AUTH_HEADER", "")
     PISTON_AUTH_TOKEN = os.environ.get("PISTON_AUTH_TOKEN", "")
 
@@ -60,9 +60,10 @@ class Config:
                 raise RuntimeError("Production CORS_ORIGINS must use HTTPS")
             if cls.FLASK_DEBUG:
                 raise RuntimeError("FLASK_DEBUG must be false in production")
-            if not cls.PISTON_URL.startswith("https://"):
-                raise RuntimeError("PISTON_URL must use HTTPS in production")
-            if not cls.PISTON_AUTH_HEADER or len(cls.PISTON_AUTH_TOKEN) < 32:
-                raise RuntimeError("Configure a strong PISTON_AUTH_TOKEN and PISTON_AUTH_HEADER in production")
+            if cls.PISTON_URL:
+                if not cls.PISTON_URL.startswith("https://"):
+                    raise RuntimeError("PISTON_URL must use HTTPS in production")
+                if not cls.PISTON_AUTH_HEADER or len(cls.PISTON_AUTH_TOKEN) < 32:
+                    raise RuntimeError("Configure a strong PISTON_AUTH_TOKEN and PISTON_AUTH_HEADER in production")
             if not cls.FIREBASE_PROJECT_ID or not cls.FIREBASE_WEB_API_KEY:
                 raise RuntimeError("FIREBASE_PROJECT_ID and FIREBASE_WEB_API_KEY must be configured in production")
