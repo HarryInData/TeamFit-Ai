@@ -1,0 +1,23 @@
+services:
+  api:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: teamfit-piston
+    restart: unless-stopped
+    privileged: true
+    environment:
+      PISTON_RUN_TIMEOUT: "5000"
+      PISTON_RUN_CPU_TIME: "5000"
+      PISTON_COMPILE_TIMEOUT: "10000"
+      PISTON_COMPILE_CPU_TIME: "10000"
+      PISTON_RUN_MEMORY_LIMIT: "134217728"
+      PISTON_COMPILE_MEMORY_LIMIT: "268435456"
+      PISTON_OUTPUT_MAX_SIZE: "32768"
+      PISTON_MAX_CONCURRENT_JOBS: "8"
+      PISTON_MAX_PROCESS_COUNT: "20"
+      PISTON_DISABLE_NETWORKING: "true"
+    ports:
+      - "127.0.0.1:2000:2000"
+    volumes:
+      - ./data/packages:/piston/packages
+    tmpfs:
+      - /tmp:exec
