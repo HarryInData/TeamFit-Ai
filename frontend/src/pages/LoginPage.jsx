@@ -433,7 +433,7 @@ export default function LoginPage() {
                   ) : (
                     <>
                       <GoogleIcon />
-                      <span>Continue with Google Workspace</span>
+                      <span>Continue with Google</span>
                     </>
                   )}
                 </button>
@@ -515,7 +515,7 @@ export default function LoginPage() {
                   )}
                 </button>
 
-                <div className="login-signup-row">Professor accounts are provided by your institution.</div>
+                <div className="login-signup-row">First time here? Continue with Google to create a professor account.</div>
 
                 <div className="login-sec-row">
                   <ShieldIcon />

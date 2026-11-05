@@ -197,12 +197,13 @@ def google_auth():
     if user and user["role"] != role:
         return jsonify({"error": f"Account is not registered as {role}"}), 403
     if not user:
-        if role == "professor":
-            return jsonify({"error": "Professor accounts must be provided by your institution"}), 403
         name = str(identity.get("name") or email.split("@", 1)[0])[:100]
         if get_user_by_name(name):
             name = f"{name[:70]} ({email.split('@', 1)[0][:24]})"
-        user = create_user(str(uuid.uuid4()), name, email, "!firebase", "student")
+        # Google sign-in verifies the email with Firebase. Allow first-time
+        # professor sign-in to provision the requested role; the role still
+        # comes from this explicit auth flow, never from an untrusted token claim.
+        user = create_user(str(uuid.uuid4()), name, email, "!firebase", role)
 
     token = create_token(user)
 
