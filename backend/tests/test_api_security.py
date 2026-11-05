@@ -2,6 +2,8 @@ import sys
 import unittest
 import uuid
 import tempfile
+import sys
+import types
 from unittest.mock import patch
 from pathlib import Path
 
@@ -128,6 +130,74 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(result.status_code, 403)
         google_result = self.client.post("/api/auth/google", json={"role": "professor"})
         self.assertIn(google_result.status_code, (400, 401))
+
+    def test_google_sign_in_respects_role_and_professor_provisioning(self):
+        invalid_role = self.client.post("/api/auth/google", json={"idToken": "verified-token", "role": "admin"})
+        self.assertEqual(invalid_role.status_code, 400)
+
+        fake_auth = types.ModuleType("firebase_admin.auth")
+        fake_auth.verify_id_token = lambda *_args, **_kwargs: {
+            "email": f"new-professor-{uuid.uuid4()}@example.test",
+            "email_verified": True,
+            "name": "New Professor",
+        }
+        fake_firebase = types.ModuleType("firebase_admin")
+        fake_firebase._apps = {"test": object()}
+        fake_firebase.auth = fake_auth
+        with patch.dict(sys.modules, {"firebase_admin": fake_firebase, "firebase_admin.auth": fake_auth}):
+            new_professor = self.client.post("/api/auth/google", json={
+                "idToken": "verified-token", "role": "professor",
+            })
+        self.assertEqual(new_professor.status_code, 403)
+        self.assertIn("provided by your institution", new_professor.json["error"])
+
+    def test_public_runs_do_not_grade_or_reveal_hidden_case_results(self):
+        professor = {"id": str(uuid.uuid4()), "name": "Public Run Professor", "email": f"{uuid.uuid4()}@example.test", "role": "professor"}
+        student = {"id": str(uuid.uuid4()), "name": "Public Run Student", "email": f"{uuid.uuid4()}@example.test", "role": "student"}
+        professor_headers = {"Authorization": f"Bearer {create_token(professor)}"}
+        student_headers = {"Authorization": f"Bearer {create_token(student)}"}
+        created = self.client.post("/api/session/create", json={
+            "title": "Public and hidden tests",
+            "questions": [{
+                "title": "Add two numbers", "statement": "Print the sum of two integers.",
+                "examples": [{"input": "2 3", "output": "5"}], "starter_code": "",
+                "test_cases": [
+                    {"stdin": "2 3", "expected_output": "5", "hidden": False},
+                    {"stdin": "10 7", "expected_output": "17", "hidden": True},
+                ], "max_score": 100,
+            }],
+        }, headers=professor_headers)
+        self.assertEqual(created.status_code, 201)
+        session_id = created.json["session_id"]
+        self.assertEqual(self.client.post(f"/api/session/{session_id}/start", headers=professor_headers).status_code, 200)
+        self.assertEqual(self.client.post("/api/session/join", json={"join_code": created.json["join_code"]}, headers=student_headers).status_code, 200)
+        question = self.client.get(f"/api/session/{session_id}/questions", headers=student_headers).json["questions"][0]
+
+        with patch("routes.session.execute_code", return_value={"status": "Accepted", "stdout": "5\n", "stderr": ""}) as execute:
+            run = self.client.post(f"/api/session/{session_id}/question/{question['id']}/run", json={
+                "code": "print(2 + 3)", "language_id": 71, "submit": False,
+            }, headers=student_headers)
+            self.assertEqual(execute.call_count, 1)
+        self.assertEqual(run.status_code, 200)
+        self.assertFalse(run.json["submitted"])
+        self.assertIsNone(run.json["score"])
+        self.assertEqual(run.json["total_tests"], 1)
+        self.assertEqual(run.json["test_results"], [{
+            "case": 1, "passed": True, "status": "Accepted", "error_type": None, "stderr": "",
+        }])
+        self.assertEqual(run.json["leaderboard"][0]["score"], 0)
+
+        with patch("routes.session.execute_code", return_value={"status": "Accepted", "stdout": "ok", "stderr": ""}) as execute:
+            submission = self.client.post(f"/api/session/{session_id}/question/{question['id']}/run", json={
+                "code": "print(2 + 3)", "language_id": 71, "submit": True,
+            }, headers=student_headers)
+            self.assertEqual(execute.call_count, 2)
+        self.assertEqual(submission.status_code, 200)
+        self.assertTrue(submission.json["submitted"])
+        self.assertEqual(submission.json["total_tests"], 2)
+        self.assertEqual(submission.json["score"], 100)
+        self.assertEqual(len(submission.json["test_results"]), 1)
+        self.assertEqual(submission.json["leaderboard"][0]["score"], 100)
 
     def test_tokens_expire(self):
         old_ttl = Config.TOKEN_TTL_SECONDS

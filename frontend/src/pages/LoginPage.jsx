@@ -110,8 +110,8 @@ export default function LoginPage() {
       setError("Please enter both email and password.");
       return;
     }
-    if (isSignUp && password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (isSignUp && password.length < 10) {
+      setError("Password must be at least 10 characters.");
       return;
     }
     setError("");
@@ -353,7 +353,7 @@ export default function LoginPage() {
                       <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
                       Keep me signed in
                     </label>
-                    <button type="button" className="login-forgot-link" onClick={e => e.preventDefault()}>Forgot password?</button>
+                    <span className="login-forgot-note">Password resets are handled by your institution.</span>
                   </div>
                 )}
 
@@ -492,7 +492,7 @@ export default function LoginPage() {
                       <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
                       Stay signed in
                     </label>
-                    <button type="button" className="login-forgot-link" onClick={e => e.preventDefault()}>Reset password</button>
+                    <span className="login-forgot-note">Password resets are handled by your institution.</span>
                   </div>
                 )}
 
@@ -508,12 +508,7 @@ export default function LoginPage() {
                   )}
                 </button>
 
-                <div className="login-signup-row">
-                  {isSignUp ? "Already have access?" : "New educator?"}{" "}
-                  <button type="button" onClick={toggleMode}>
-                    {isSignUp ? "Sign in instead" : "Request institutional access"}
-                  </button>
-                </div>
+                <div className="login-signup-row">Professor accounts are provided by your institution.</div>
 
                 <div className="login-sec-row">
                   <ShieldIcon />

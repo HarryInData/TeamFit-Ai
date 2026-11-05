@@ -125,6 +125,9 @@ def google_auth():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "Request body required"}), 400
+    role = data.get("role", "student")
+    if role not in {"student", "professor"}:
+        return jsonify({"error": "Role must be student or professor"}), 400
     id_token = data.get("idToken")
     if not isinstance(id_token, str) or not id_token:
         return jsonify({"error": "Firebase ID token is required"}), 400
@@ -141,7 +144,11 @@ def google_auth():
     if not email or not identity.get("email_verified"):
         return jsonify({"error": "A verified Google email is required"}), 401
     user = get_user_by_email(email)
+    if user and user["role"] != role:
+        return jsonify({"error": f"Account is not registered as {role}"}), 403
     if not user:
+        if role == "professor":
+            return jsonify({"error": "Professor accounts must be provided by your institution"}), 403
         name = str(identity.get("name") or email.split("@", 1)[0])[:100]
         if get_user_by_name(name):
             name = f"{name[:70]} ({email.split('@', 1)[0][:24]})"
