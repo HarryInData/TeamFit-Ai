@@ -201,10 +201,10 @@ export async function getLeaderboard(sessionId) {
   return apiFetch(`${API_BASE}/session/${sessionId}/leaderboard`, { headers: authHeaders() });
 }
 
-export async function runExamQuestion(sessionId, questionId, code, languageId = 71) {
+export async function runExamQuestion(sessionId, questionId, code, languageId = 71, submit = true) {
   return apiFetch(`${API_BASE}/session/${sessionId}/question/${questionId}/run`, {
     method: 'POST', headers: authHeaders(),
-    body: JSON.stringify({ code, language_id: languageId }),
+    body: JSON.stringify({ code, language_id: languageId, submit }),
   });
 }
 

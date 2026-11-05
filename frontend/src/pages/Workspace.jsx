@@ -1,491 +1,193 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Editor from '@monaco-editor/react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/auth';
-import { updateKeystrokes, getSessionMembers, getExamQuestions, getLeaderboard, runExamQuestion } from '../services/api';
+import { getExamQuestions, getLeaderboard, runExamQuestion } from '../services/api';
 import LANGUAGES from '../config/languages';
 import './Workspace.css';
 
-/* ── Renders SVG img or emoji span ── */
-function LangIcon({ icon, className = '', size = 18 }) {
-  if (icon && icon.startsWith('/')) {
-    return <img src={icon} alt="" className={className} style={{ width: size, height: size, display: 'inline-block', verticalAlign: 'middle' }} />;
-  }
-  return <span className={className}>{icon}</span>;
+const STORAGE_KEY = 'teamfit_exam_drafts';
+
+function readDraft(sessionId, questionId, languageId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    return all[`${sessionId}:${questionId}:${languageId}`];
+  } catch { return undefined; }
 }
 
-/* ── Generate file set for a language ── */
-function buildFilesForLang(lang) {
-  const ext = lang.ext;
-  return {
-    files: [
-      { name: `main${ext}`, icon: lang.icon },
-      { name: `solution${ext}`, icon: '📄' },
-      { name: `test${ext}`, icon: '🧪' },
-    ],
-    contents: {
-      [`main${ext}`]: lang.template,
-      [`solution${ext}`]: `// solution${ext} — Extended implementation\n${lang.template}`,
-      [`test${ext}`]: `// test${ext} — Unit tests\n// TODO: Write tests for your ${lang.name} code`,
-    },
-  };
-}
-
-const MEMBER_COLORS = ['#6C5CE7', '#A855F7', '#3B82F6', '#FFB800'];
-
-function getActivityText(activity) {
-  switch (activity) {
-    case 'typing': return 'is typing...';
-    case 'editing': return 'is editing...';
-    case 'submitted': return 'submitted code';
-    default: return 'is idle';
-  }
+function writeDraft(sessionId, questionId, languageId, code) {
+  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  all[`${sessionId}:${questionId}:${languageId}`] = code;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
 }
 
 export default function Workspace() {
-  const { user, logout, sessionId } = useAuth();
-  const studentName = user?.name || 'Student';
-
-  // ── Language State ──
-  const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]); // Python default
-  const [showLangMenu, setShowLangMenu] = useState(false);
-
-  // Build files for current language
-  const initFiles = buildFilesForLang(selectedLang);
-
-  // ── Core State ──
-  const [activeFile, setActiveFile] = useState(`main${selectedLang.ext}`);
-  const [questionCodes, setQuestionCodes] = useState({});
-  const [files, setFiles] = useState(initFiles.files);
-  const [output, setOutput] = useState(null);
-  const [consoleTab, setConsoleTab] = useState('output');
-  const [running, setRunning] = useState(false);
-  const [keystrokes, setKeystrokes] = useState(0);
-  const [activity, setActivity] = useState('idle');
-  const [students, setStudents] = useState([]);
-  const [apiError, setApiError] = useState(null);
+  const { user, logout, sessionId, sessionCode, clearSession } = useAuth();
+  const navigate = useNavigate();
+  const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
   const [questions, setQuestions] = useState([]);
   const [activeQuestionId, setActiveQuestionId] = useState('');
   const [leaderboard, setLeaderboard] = useState([]);
+  const [drafts, setDrafts] = useState({});
+  const [output, setOutput] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState('');
+  const [savedAt, setSavedAt] = useState(null);
+  const [consoleTab, setConsoleTab] = useState('tests');
+  const [rightTab, setRightTab] = useState('rank');
+  const [mobilePanel, setMobilePanel] = useState('problem');
 
-  // ── UI modals/dropdowns ──
-  const [showAddTeammate, setShowAddTeammate] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [teammateName, setTeammateName] = useState('');
+  const activeQuestion = questions.find((item) => item.id === activeQuestionId) || questions[0];
+  const resolvedQuestionId = activeQuestion?.id;
+  const codeKey = `${activeQuestion?.id || ''}:${selectedLang.id}`;
+  const code = drafts[codeKey] ?? activeQuestion?.starter_code ?? '';
+  const me = leaderboard.find((student) => student.user_name === user?.name);
 
-  // ── Refs ──
-  const keystrokeRef = useRef(0);
-  const lastSyncRef = useRef(0);
-
-  const activeQuestion = questions.find((question) => question.id === activeQuestionId) || questions[0];
-  // Current code for the selected exam question.
-  const codeKey = `${activeQuestionId}:${selectedLang.id}`;
-  const code = questionCodes[codeKey] ?? activeQuestion?.starter_code ?? '';
-
-  const refreshExam = useCallback(async () => {
+  const refresh = useCallback(async () => {
     if (!sessionId) return;
     try {
       const [questionData, boardData] = await Promise.all([getExamQuestions(sessionId), getLeaderboard(sessionId)]);
-      const nextQuestions = questionData.questions || [];
-      setQuestions(nextQuestions);
-      setActiveQuestionId((current) => nextQuestions.some((question) => question.id === current) ? current : nextQuestions[0]?.id || '');
+      const next = questionData.questions || [];
+      setQuestions(next);
+      setActiveQuestionId((current) => next.some((item) => item.id === current) ? current : next[0]?.id || '');
       setLeaderboard(boardData.leaderboard || []);
-    } catch (error) {
-      setApiError(error.message);
-    }
+      setError('');
+    } catch (err) { setError(err.message); }
   }, [sessionId]);
 
-  useEffect(() => { refreshExam(); const timer = setInterval(refreshExam, 5000); return () => clearInterval(timer); }, [refreshExam]);
+  useEffect(() => {
+    refresh();
+    const timer = window.setInterval(refresh, 5000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
 
-  // ── Language switch handler ──
-  function handleLanguageChange(lang) {
-    setSelectedLang(lang);
-    const newFiles = buildFilesForLang(lang);
-    setFiles(newFiles.files);
-    setActiveFile(`main${lang.ext}`);
+  useEffect(() => {
+    if (!sessionId || !resolvedQuestionId) return;
+    const restored = readDraft(sessionId, resolvedQuestionId, selectedLang.id);
+    const key = `${resolvedQuestionId}:${selectedLang.id}`;
+    if (restored !== undefined) setDrafts((current) => ({ ...current, [key]: restored }));
     setOutput(null);
-    setShowLangMenu(false);
-  }
+    setSavedAt(restored !== undefined ? new Date() : null);
+  }, [sessionId, resolvedQuestionId, selectedLang.id]);
 
-  // ── 1. Fetch students from GET /api/students every 3 seconds ──
-  const fetchStudents = useCallback(async () => {
-    if (!sessionId) {
-      setStudents([]);
-      setApiError('Join a coding session before opening the workspace.');
-      return;
-    }
+  useEffect(() => {
+    if (!sessionId || !activeQuestion || drafts[codeKey] === undefined) return;
+    const timer = window.setTimeout(() => {
+      try {
+        writeDraft(sessionId, activeQuestion.id, selectedLang.id, drafts[codeKey]);
+        setSavedAt(new Date());
+      } catch { setError('Draft could not be saved in this browser.'); }
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [sessionId, activeQuestion, selectedLang.id, codeKey, drafts]);
+
+  function saveDraft() {
+    if (!sessionId || !activeQuestion) return;
     try {
-      const data = await getSessionMembers(sessionId);
-      setStudents((data.members || []).map((member) => ({
-        student: member.user,
-        keystrokes: member.keystrokes,
-        activity: member.activity,
-        role: member.role,
-        contribution: member.contribution,
-      })));
-      setApiError(null);
-    } catch {
-      setApiError('Backend unavailable');
-    }
-  }, [sessionId]);
-
-  useEffect(() => {
-    fetchStudents();
-    const interval = setInterval(fetchStudents, 3000);
-    return () => clearInterval(interval);
-  }, [fetchStudents]);
-
-  // ── 2. Sync keystroke DELTAS every 5 seconds ──
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const currentKs = keystrokeRef.current;
-      const delta = currentKs - lastSyncRef.current;
-      if (delta > 0) {
-        lastSyncRef.current = currentKs;
-        // Send only the DELTA — backend increments
-        updateKeystrokes(studentName, delta, activity, sessionId).catch(() => {});
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [studentName, activity, sessionId]);
-
-  // ── 3. Auto-reset to idle after 5s of inactivity ──
-  useEffect(() => {
-    if (activity === 'typing') {
-      const timer = setTimeout(() => setActivity('idle'), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [activity, keystrokes]);
-
-  // ── Close dropdowns on outside click ──
-  useEffect(() => {
-    function handleClick() {
-      setShowProfileMenu(false);
-      setShowSettings(false);
-      setShowLangMenu(false);
-    }
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
-
-  // ── File switching ──
-  // ── Editor change handler ──
-  function handleEditorChange(value) {
-    setQuestionCodes((prev) => ({ ...prev, [codeKey]: value || '' }));
-    keystrokeRef.current += 1;
-    setKeystrokes(keystrokeRef.current);
-    setActivity('typing');
+      writeDraft(sessionId, activeQuestion.id, selectedLang.id, code);
+      setSavedAt(new Date());
+      setError('');
+    } catch { setError('Draft could not be saved in this browser.'); }
   }
 
-  // ── Run Code ──
-  async function handleRun() {
-    if (!activeQuestion) {
-      setOutput({ stdout: '', stderr: 'No exam question is available. Return to your dashboard and join an open exam.', status: 'Error', time: '0', memory: '0' });
-      setConsoleTab('output');
-      return;
-    }
-    if (!code.trim()) {
-      setOutput({
-        stdout: '',
-        stderr: 'Error: Code cannot be empty. Write some code first!',
-        status: 'Error',
-        time: '0', memory: '0',
-      });
-      setConsoleTab('output');
-      return;
-    }
+  async function runCode(submit = false) {
+    if (!activeQuestion) return;
+    if (!code.trim()) { setOutput({ status: 'Error', error: 'Write a solution before running it.', test_results: [] }); return; }
     setRunning(true);
-    setConsoleTab('output');
-    setActivity('submitted');
-    updateKeystrokes(studentName, 0, 'submitted', sessionId).catch(() => {});
-
+    setError('');
+    setConsoleTab('tests');
     try {
-      const result = await runExamQuestion(sessionId, activeQuestion.id, code, selectedLang.id);
+      const result = await runExamQuestion(sessionId, activeQuestion.id, code, selectedLang.id, submit);
       setOutput(result);
-      fetchStudents();
-      refreshExam();
-    } catch (err) {
-      setOutput({
-        stdout: '',
-        stderr: err.message || 'Execution failed. Is the backend running?',
-        status: 'Error',
-        time: '0',
-        memory: '0',
-      });
-    } finally {
-      setRunning(false);
-    }
+      if (submit) refresh();
+    } catch (err) { setOutput({ status: 'Error', error: err.message, test_results: [] }); }
+    finally { setRunning(false); }
   }
 
-  // ── Add Teammate ──
-  function handleAddTeammate(e) {
-    e.preventDefault();
-    if (teammateName.trim()) {
-      alert(`Invite sent to "${teammateName}"`);
-      setTeammateName('');
-      setShowAddTeammate(false);
-    }
-  }
+  const questionIndex = Math.max(questions.findIndex((item) => item.id === activeQuestion?.id), 0);
+  const joinedCount = leaderboard.length;
+  const maxPoints = useMemo(() => questions.reduce((sum, question) => sum + Number(question.max_score || 0), 0), [questions]);
+  const localRank = me?.rank ? `#${me.rank}` : '—';
 
-  // ── Derive active members ──
-  const activeMembers = students.filter((s) => s.activity !== 'idle');
-
-  return (
-    <div className="workspace">
-      {/* ── Modals ── */}
-      {showAddTeammate && (
-        <div className="ws-modal-overlay" onClick={() => setShowAddTeammate(false)}>
-          <div className="ws-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="ws-modal-header">
-              <h3>Add Teammate</h3>
-              <button className="ws-modal-close" onClick={() => setShowAddTeammate(false)}>✕</button>
-            </div>
-            <form className="ws-modal-body" onSubmit={handleAddTeammate}>
-              <label className="ws-modal-label">Name or Email</label>
-              <input
-                className="ws-modal-input"
-                type="text"
-                placeholder="Enter teammate name or email"
-                value={teammateName}
-                onChange={(e) => setTeammateName(e.target.value)}
-                autoFocus
-              />
-              <div className="ws-modal-actions">
-                <button type="button" className="ws-modal-cancel" onClick={() => setShowAddTeammate(false)}>Cancel</button>
-                <button type="submit" className="ws-modal-submit">Send Invite</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showSettings && (
-        <div className="ws-modal-overlay" onClick={() => setShowSettings(false)}>
-          <div className="ws-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="ws-modal-header">
-              <h3>Settings</h3>
-              <button className="ws-modal-close" onClick={() => setShowSettings(false)}>✕</button>
-            </div>
-            <div className="ws-modal-body">
-              <div className="ws-settings-item">
-                <span>Theme</span>
-                <span className="ws-settings-value">Dark Mode</span>
-              </div>
-              <div className="ws-settings-item">
-                <span>Font Size</span>
-                <span className="ws-settings-value">14px</span>
-              </div>
-              <div className="ws-settings-item">
-                <span>Auto-save</span>
-                <span className="ws-settings-value">Enabled</span>
-              </div>
-              <div className="ws-settings-item">
-                <span>Language</span>
-                <span className="ws-settings-value">Python</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Top Nav ── */}
-      <header className="ws-topnav">
-        <div className="ws-topnav-left">
-          <span className="ws-logo-text">TeamFit AI</span>
-          <span className="ws-session-label">{activeQuestion ? 'Practical Exam' : 'Coding Session'}</span>
-          <span className="ws-system-badge ws-system-badge--active">● System Active</span>
-          {apiError && <span className="ws-api-error">⚠ {apiError}</span>}
-        </div>
-        <div className="ws-topnav-right">
-          {/* ── Language Selector ── */}
-          <div className="ws-lang-wrapper">
-            <button
-              className="ws-lang-btn"
-              onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); }}
-              title="Select Language"
-            >
-              <LangIcon icon={selectedLang.icon} className="ws-lang-icon" size={20} />
-              <span className="ws-lang-name">{selectedLang.name}</span>
-              <span className="ws-lang-caret">▾</span>
-            </button>
-            {showLangMenu && (
-              <div className="ws-lang-menu" onClick={(e) => e.stopPropagation()}>
-                {LANGUAGES.map((lang) => (
-                  <button
-                    key={lang.id}
-                    className={`ws-lang-option ${lang.id === selectedLang.id ? 'ws-lang-option--active' : ''}`}
-                    onClick={() => handleLanguageChange(lang)}
-                  >
-                    <LangIcon icon={lang.icon} className="ws-lang-option-icon" size={18} />
-                    <span>{lang.name}</span>
-                    {lang.id === selectedLang.id && <span className="ws-lang-check">✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <span className="ws-keystroke-count">{leaderboard.length} students</span>
-          <button className="ws-run-btn" onClick={handleRun} disabled={running}>
-            <span className="ws-run-icon">▶</span>
-            {running ? 'Grading...' : 'Submit & run'}
-          </button>
-          <button className="ws-icon-btn" title="Team">👥</button>
-          {/* Profile dropdown — NOT redirect to login */}
-          <div className="ws-profile-wrapper">
-            <button
-              className="ws-avatar-btn"
-              title="Profile"
-              onClick={(e) => { e.stopPropagation(); setShowProfileMenu(!showProfileMenu); }}
-            >
-              {studentName.charAt(0)}
-            </button>
-            {showProfileMenu && (
-              <div className="ws-dropdown" onClick={(e) => e.stopPropagation()}>
-                <div className="ws-dropdown-header">
-                  <div className="ws-dropdown-name">{studentName}</div>
-                  <div className="ws-dropdown-email">{user?.email || 'student@teamfit.ai'}</div>
-                </div>
-                <div className="ws-dropdown-sep" />
-                <button className="ws-dropdown-item" onClick={() => { setShowSettings(true); setShowProfileMenu(false); }}>
-                  ⚙️ Settings
-                </button>
-                <button className="ws-dropdown-item" onClick={() => { alert('Profile editing coming soon!'); setShowProfileMenu(false); }}>
-                  👤 Edit Profile
-                </button>
-                <div className="ws-dropdown-sep" />
-                <button className="ws-dropdown-item ws-dropdown-item--danger" onClick={logout}>
-                  🚪 Logout
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="ws-body">
-        <aside className="ws-problem-panel">
-        <div className="ws-problem-head"><span>QUESTION {Math.max(questions.findIndex((question) => question.id === activeQuestion?.id) + 1, 1)} OF {questions.length}</span><strong>{activeQuestion?.max_score ?? 0} pts</strong></div>
-          {questions.length > 1 && <select aria-label="Select question" value={activeQuestion?.id || ''} onChange={(event) => setActiveQuestionId(event.target.value)}>{questions.map((question, index) => <option value={question.id} key={question.id}>{index + 1}. {question.title}</option>)}</select>}
-          <div className="ws-problem-content">
-            {activeQuestion ? <><h1>{activeQuestion.title}</h1><p className="ws-problem-statement">{activeQuestion.statement}</p>{(activeQuestion.examples || []).map((example, index) => <div className="ws-example" key={index}><strong>Example {index + 1}</strong><pre>Input: {example.input}{'\n'}Output: {example.output}</pre></div>)}</> : <div className="ws-console-placeholder">{apiError || 'Loading exam question…'}</div>}
-          </div>
-        </aside>
-
-        {/* ── Main Editor Area ── */}
-        <main className="ws-main">
-          {/* Editor Tab — shows only the active file */}
-          <div className="ws-editor-tabs">
-            <button className="ws-tab ws-tab--active">
-              <LangIcon icon={files.find(f => f.name === activeFile)?.icon || '📄'} className="ws-tab-icon" size={16} /> {activeFile}
-            </button>
-          </div>
-
-          {/* Monaco Editor — language changes dynamically */}
-          <div className="ws-editor-container">
-            <Editor
-              key={`${selectedLang.id}-${activeFile}`}
-              height="100%"
-              defaultLanguage={selectedLang.monaco}
-              language={selectedLang.monaco}
-              theme="vs-dark"
-              value={code}
-              onChange={handleEditorChange}
-              options={{
-                fontSize: 14,
-                fontFamily: "'JetBrains Mono', monospace",
-                minimap: { enabled: false },
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                padding: { top: 16 },
-                renderLineHighlight: 'gutter',
-                smoothScrolling: true,
-              }}
-            />
-          </div>
-
-          {/* Activity Bar — Live from API */}
-          <div className="ws-activity-bar">
-            {activeMembers.length > 0 ? (
-              activeMembers.map((m, i) => (
-                <span
-                  key={m.student}
-                  className="ws-activity-indicator"
-                  style={{ '--dot-color': MEMBER_COLORS[i % MEMBER_COLORS.length] }}
-                >
-                  <span className="ws-activity-dot" />
-                  {m.student} {getActivityText(m.activity)}
-                </span>
-              ))
-            ) : (
-              <span className="ws-activity-indicator ws-activity-indicator--idle">
-                All team members idle
-              </span>
-            )}
-          </div>
-
-          {/* Console */}
-          <div className="ws-console">
-            <div className="ws-console-tabs">
-              {['output', 'debug', 'problems'].map((tab) => (
-                <button
-                  key={tab}
-                  className={`ws-console-tab ${consoleTab === tab ? 'ws-console-tab--active' : ''}`}
-                  onClick={() => setConsoleTab(tab)}
-                >
-                  {tab.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <div className="ws-console-output">
-              {consoleTab === 'debug' ? (
-                <div className="ws-console-placeholder">
-                  Debug output will appear here. Active file: {activeFile}
-                </div>
-              ) : consoleTab === 'problems' ? (
-                <div className="ws-console-placeholder">
-                  {!output
-                    ? 'Run the code to see compiler and runtime errors. Static analysis is not configured.'
-                    : output.error_type
-                      ? `${output.error_type} error (${output.status}): ${output.stderr || 'No error details provided.'}`
-                      : output.status === 'Accepted'
-                        ? 'Execution completed without a reported error. Static analysis is not configured.'
-                        : `Execution status: ${output.status || 'Unknown'}`}
-                </div>
-              ) : running ? (
-                <div className="ws-console-running">
-                  <div className="ws-console-spinner" />
-                  Executing code...
-                </div>
-              ) : output ? (
-                <>
-                  <div className={`ws-console-status ${output.status === 'Accepted' ? 'ws-console-status--success' : 'ws-console-status--error'}`}>
-                    {output.status === 'Accepted' ? '✓ Execution Successful.' : `✗ Execution Failed: ${output.status}`}
-                  </div>
-                  {output.stdout && <pre className="ws-console-text">{output.stdout}</pre>}
-                  {output.stderr && <pre className="ws-console-text ws-console-text--error">{output.stderr}</pre>}
-                  <div className="ws-console-meta">
-                    Time: {output.time}s &nbsp;&nbsp; Memory: {output.memory}KB
-                  </div>
-                  <div className="ws-console-prompt">$ _</div>
-                </>
-              ) : (
-                <div className="ws-console-placeholder">
-                  Click "Run Code" to execute your program.
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
-
-        <aside className="ws-panel ws-leaderboard-panel">
-          <div className="ws-panel-section"><h3 className="ws-panel-heading">LIVE LEADERBOARD</h3><p className="ws-leaderboard-caption">Ranked by best score across questions</p>
-            {leaderboard.length ? leaderboard.map((student) => <div className={`ws-rank-row ${student.user_name === studentName ? 'ws-rank-row--you' : ''}`} key={student.user_name}><span className="ws-rank-number">#{student.rank}</span><span className="ws-rank-name">{student.user_name}{student.user_name === studentName ? ' (you)' : ''}</span><strong>{student.score}<small>/{student.max_score}</small></strong></div>) : <div className="ws-panel-empty">No students joined yet</div>}
-            <div className="ws-exam-count">{leaderboard.length} joined · updates every 5 seconds</div>
-          </div>
-          <div className="ws-panel-section ws-my-score"><h3 className="ws-panel-heading">YOUR PROGRESS</h3>{leaderboard.find((student) => student.user_name === studentName) ? <><strong>#{leaderboard.find((student) => student.user_name === studentName).rank}</strong><span>{leaderboard.find((student) => student.user_name === studentName).score}/{leaderboard.find((student) => student.user_name === studentName).max_score} points</span></> : <p>Submit your first solution to get ranked.</p>}</div>
-        </aside>
+  return <main className="exam-workspace">
+    <header className="exam-topbar">
+      <button className="exam-brand" onClick={() => navigate('/session')} aria-label="Back to student dashboard"><span className="exam-brand-mark">▣</span><span>TeamFit</span></button>
+      <div className="exam-course"><strong>{activeQuestion?.title || 'Practical examination'}</strong><span>{sessionCode ? `Session ${sessionCode}` : 'Student coding workspace'}</span></div>
+      <div className="exam-top-actions">
+        <span className="exam-live"><i/>Session active</span>
+        <button className="exam-action-button" onClick={saveDraft}>Save draft</button>
+        <button className="exam-action-button" onClick={() => runCode(false)} disabled={running}>{running ? 'Running…' : '▶ Run tests'}</button>
+        <button className="exam-action-button exam-action-primary" onClick={() => runCode(true)} disabled={running}>{running ? 'Submitting…' : 'Submit solution'}</button>
+        <button className="exam-avatar" title="Log out" onClick={logout}>{(user?.name || 'S').slice(0, 1).toUpperCase()}</button>
       </div>
+    </header>
+
+    <nav className="exam-question-nav" aria-label="Exam questions">
+      {questions.map((question, index) => {
+        const isActive = question.id === activeQuestion?.id;
+        const score = leaderboard.find((row) => row.user_name === user?.name)?.question_scores?.[question.id];
+        return <button key={question.id} className={`exam-question-tab ${isActive ? 'is-active' : ''}`} onClick={() => { setActiveQuestionId(question.id); setMobilePanel('problem'); }}>
+          <span className="exam-question-number">{index + 1}</span><span className="exam-question-title">{question.title}</span><span className="exam-question-points">{score ?? question.max_score} pts</span>
+        </button>;
+      })}
+      <div className="exam-total-score"><span>Total exam score</span><strong>{me ? `${me.score} / ${maxPoints}` : `— / ${maxPoints}`}</strong></div>
+    </nav>
+
+    {error && <div className="exam-banner-error" role="alert">{error}<button onClick={() => setError('')}>Dismiss</button></div>}
+    <nav className="exam-mobile-nav" aria-label="Workspace panels">
+      {[['problem','Problem'],['editor','Code editor'],['standings','Standings']].map(([key,label]) => <button key={key} className={mobilePanel === key ? 'is-active' : ''} onClick={() => setMobilePanel(key)}>{label}</button>)}
+    </nav>
+
+    <div className="exam-workbench">
+      <aside className={`exam-problem-pane ${mobilePanel === 'problem' ? 'mobile-active' : ''}`}>
+        <div className="exam-pane-heading"><h2>Problem specification</h2><span>{activeQuestion?.max_score || 0} pts</span></div>
+        <div className="exam-problem-scroll">
+          {activeQuestion ? <>
+            <h1>{questionIndex + 1}. {activeQuestion.title}</h1>
+            <p className="exam-problem-meta"><span>Practical problem</span><span>Question {questionIndex + 1} of {questions.length}</span></p>
+            <div className="exam-problem-statement">{activeQuestion.statement}</div>
+            {(activeQuestion.examples || []).map((example, index) => <section className="exam-example" key={`${activeQuestion.id}-${index}`}><div className="exam-example-head"><strong>Example {index + 1}</strong><span>Sample case</span></div><pre><b>Input</b>{'\n'}{example.input}{'\n\n'}<b>Output</b>{'\n'}{example.output}{example.explanation ? `\n\nExplanation\n${example.explanation}` : ''}</pre></section>)}
+          </> : <div className="exam-empty-state">{error || 'Loading exam questions…'}</div>}
+        </div>
+      </aside>
+
+      <section className={`exam-editor-pane ${mobilePanel === 'editor' ? 'mobile-active' : ''}`}>
+        <div className="exam-editor-toolbar">
+          <label className="exam-language-select">Language <select value={selectedLang.id} onChange={(event) => { const lang = LANGUAGES.find((item) => item.id === Number(event.target.value)); if (lang) setSelectedLang(lang); }}>
+            {LANGUAGES.map((lang) => <option key={lang.id} value={lang.id}>{lang.name}</option>)}
+          </select></label>
+          <span className="exam-save-state">{savedAt ? `Saved on this device · ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Autosave on this device'}</span>
+          <button className="exam-reset-button" onClick={() => { setDrafts((current) => ({ ...current, [codeKey]: activeQuestion?.starter_code || '' })); setOutput(null); }}>Reset code</button>
+        </div>
+        <div className="exam-code-editor">
+          <Editor key={`${activeQuestion?.id}-${selectedLang.id}`} height="100%" language={selectedLang.monaco} value={code} onChange={(value) => setDrafts((current) => ({ ...current, [codeKey]: value || '' }))} theme="vs" options={{ fontSize: 13, fontFamily: "'JetBrains Mono', monospace", minimap: { enabled: false }, lineNumbers: 'on', scrollBeyondLastLine: false, padding: { top: 16 }, renderLineHighlight: 'gutter', smoothScrolling: true, automaticLayout: true, tabSize: 4 }} />
+        </div>
+        <div className="exam-output-panel">
+          <div className="exam-output-tabs">{[['tests','Test results'],['output','Console output'],['errors','Errors']].map(([id,label]) => <button key={id} className={consoleTab === id ? 'is-active' : ''} onClick={() => setConsoleTab(id)}>{label}{id === 'tests' && output?.test_results?.length ? ` (${output.test_results.filter((item) => item.passed).length}/${output.test_results.length})` : ''}</button>)}</div>
+          <div className="exam-output-content" aria-live="polite">
+            {running ? <p className="exam-output-muted">Executing in the isolated code runner…</p> : !output ? <p className="exam-output-muted">Run your solution to see execution results. Hidden test inputs and expected answers stay private.</p> : consoleTab === 'tests' ? <>
+              <div className={`exam-result-summary ${output.status === 'Accepted' ? 'is-pass' : output.status === 'Partial' ? 'is-partial' : 'is-fail'}`}><strong>{output.status === 'Accepted' ? 'All available tests passed' : output.status === 'Partial' ? 'Some tests passed' : output.status || 'Execution failed'}</strong>{output.score !== undefined && <span>{output.score}/{output.max_score} points · {output.passed_tests}/{output.total_tests} passed</span>}</div>
+              {(output.test_results || []).map((test, index) => <div className="exam-test-result" key={`${test.case || index}-${index}`}><span className={test.passed ? 'test-check' : 'test-fail'}>{test.passed ? '✓' : '!'}</span><span>Test case {test.case || index + 1}</span><strong>{test.passed ? 'Passed' : test.status || 'Failed'}</strong>{test.error_type && <small>{test.error_type}</small>}</div>)}
+              {output.error && <p className="exam-output-error">{output.error}</p>}
+              {output.test_results?.some((test) => test.stderr) && <pre className="exam-console-text">{output.test_results.filter((test) => test.stderr).map((test) => test.stderr).join('\n')}</pre>}
+            </> : consoleTab === 'output' ? <pre className="exam-console-text">{output.stdout || output.stderr || output.error || 'No console output was returned by the runner.'}</pre> : <pre className="exam-console-text exam-output-error">{output.test_results?.filter((test) => test.error_type || test.stderr).map((test) => `Test ${test.case}: ${test.error_type || ''}\n${test.stderr || ''}`).join('\n\n') || output.error || 'No execution errors.'}</pre>}
+          </div>
+        </div>
+      </section>
+
+      <aside className={`exam-standings-pane ${mobilePanel === 'standings' ? 'mobile-active' : ''}`}>
+        <div className="exam-standings-heading"><h2>Live session standings</h2><div className="exam-pane-tabs"><button className={rightTab === 'rank' ? 'is-active' : ''} onClick={() => setRightTab('rank')}>Rank</button><button className={rightTab === 'history' ? 'is-active' : ''} onClick={() => setRightTab('history')}>Your progress</button></div></div>
+        {rightTab === 'rank' ? <>
+          <p className="exam-standings-caption">{joinedCount} {joinedCount === 1 ? 'student has' : 'students have'} joined · refreshes every 5 seconds</p>
+          <div className="exam-rank-table"><div className="exam-rank-header"><span>Rank</span><span>Student</span><span>Score</span></div>
+            {leaderboard.map((student) => <div className={`exam-rank-row ${student.user_name === user?.name ? 'is-you' : ''}`} key={student.user_name}><span className="rank-index">#{student.rank}</span><span className="rank-student">{student.user_name}{student.user_name === user?.name && <small>You</small>}</span><strong>{student.score}<small>/{student.max_score}</small></strong></div>)}
+            {!leaderboard.length && <p className="exam-output-muted">Rankings appear after students submit their first solution.</p>}
+          </div>
+        </> : <div className="exam-my-progress"><p>Your current rank</p><strong>{localRank}</strong><span>{me ? `${me.score} of ${me.max_score} points` : 'Submit a solution to appear in the standings.'}</span><div className="exam-progress-bar"><i style={{ width: `${me?.max_score ? Math.min(100, me.score / me.max_score * 100) : 0}%` }} /></div><small>{questions.length} questions · {maxPoints} possible points</small></div>}
+        <div className="exam-submission-history"><h3>Latest result</h3>{output ? <div className="exam-history-card"><span className={output.status === 'Accepted' ? 'test-check' : 'test-fail'}>{output.status === 'Accepted' ? '✓' : '!'}</span><div><strong>{output.status || 'Run completed'}</strong><small>{output.passed_tests ?? 0}/{output.total_tests ?? 0} tests passed{output.submitted ? ' · submitted' : ' · public run'}</small></div><b>{output.submitted ? `${output.score ?? 0} pts` : 'Run'}</b></div> : <p>No solution submitted in this question yet.</p>}</div>
+        <div className="exam-privacy-note">Only your professor can identify you on the exam roster. Peer standings use the session display name.</div>
+      </aside>
     </div>
-  );
+    <footer className="exam-statusbar"><span>● Secure exam workspace</span><span>{savedAt ? 'Draft saved locally' : 'Draft autosave enabled'}</span><span>{selectedLang.name}</span><button onClick={() => { clearSession?.(); navigate('/session'); }}>Leave workspace</button></footer>
+  </main>;
 }

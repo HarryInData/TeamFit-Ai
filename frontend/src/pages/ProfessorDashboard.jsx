@@ -3,7 +3,7 @@ import { useAuth } from '../context/auth';
 import { createSession, getDashboard, startExam, closeExam } from '../services/api';
 import './ExamPortal.css';
 
-const emptyQuestion = () => ({ title: '', statement: '', exampleInput: '', exampleOutput: '', testInput: '', expectedOutput: '', starterCode: '', maxScore: 100 });
+const emptyQuestion = () => ({ title: '', statement: '', exampleInput: '', exampleOutput: '', testCases: [{ stdin: '', expectedOutput: '' }], starterCode: '', maxScore: 100 });
 
 export default function ProfessorDashboard() {
   const { user, logout } = useAuth();
@@ -24,6 +24,13 @@ export default function ProfessorDashboard() {
     setQuestions((current) => current.map((question, i) => i === index ? { ...question, [field]: value } : question));
   }
 
+  function updateTestCase(questionIndex, caseIndex, field, value) {
+    setQuestions((current) => current.map((question, index) => index !== questionIndex ? question : {
+      ...question,
+      testCases: question.testCases.map((testCase, testIndex) => testIndex === caseIndex ? { ...testCase, [field]: value } : testCase),
+    }));
+  }
+
   async function saveExam(event) {
     event.preventDefault();
     setSaving(true);
@@ -33,7 +40,10 @@ export default function ProfessorDashboard() {
       statement: question.statement,
       starter_code: question.starterCode,
       examples: [{ input: question.exampleInput, output: question.exampleOutput }],
-      test_cases: [{ stdin: question.testInput, expected_output: question.expectedOutput, hidden: true }],
+      test_cases: [
+        ...(question.exampleInput || question.exampleOutput ? [{ stdin: question.exampleInput, expected_output: question.exampleOutput, hidden: false }] : []),
+        ...question.testCases.map((testCase) => ({ stdin: testCase.stdin, expected_output: testCase.expectedOutput, hidden: true })),
+      ],
       max_score: Number(question.maxScore),
     }));
     try {
@@ -101,9 +111,13 @@ export default function ProfessorDashboard() {
             <label>Example input<textarea rows={3} value={question.exampleInput} onChange={(event) => updateQuestion(index, 'exampleInput', event.target.value)} /></label>
             <label>Example output<textarea rows={3} value={question.exampleOutput} onChange={(event) => updateQuestion(index, 'exampleOutput', event.target.value)} /></label>
           </div>
-          <div className="portal-form-columns">
-            <label>Hidden test input<textarea required rows={3} value={question.testInput} onChange={(event) => updateQuestion(index, 'testInput', event.target.value)} /></label>
-            <label>Expected output<textarea required rows={3} value={question.expectedOutput} onChange={(event) => updateQuestion(index, 'expectedOutput', event.target.value)} /></label>
+          <div className="portal-test-cases"><div className="portal-test-cases-heading"><strong>Hidden test cases</strong><span>Inputs and expected output stay private from students.</span></div>
+            {question.testCases.map((testCase, caseIndex) => <div className="portal-form-columns portal-test-case" key={caseIndex}>
+              <label>Input {caseIndex + 1}<textarea required rows={3} value={testCase.stdin} onChange={(event) => updateTestCase(index, caseIndex, 'stdin', event.target.value)} /></label>
+              <label>Expected output<textarea required rows={3} value={testCase.expectedOutput} onChange={(event) => updateTestCase(index, caseIndex, 'expectedOutput', event.target.value)} /></label>
+              {question.testCases.length > 1 && <button className="portal-button portal-remove-test" type="button" onClick={() => updateQuestion(index, 'testCases', question.testCases.filter((_, i) => i !== caseIndex))}>Remove test case</button>}
+            </div>)}
+            <button className="portal-button" type="button" onClick={() => updateQuestion(index, 'testCases', [...question.testCases, { stdin: '', expectedOutput: '' }])}>＋ Add hidden test case</button>
           </div>
           <label>Starter code<textarea rows={4} value={question.starterCode} onChange={(event) => updateQuestion(index, 'starterCode', event.target.value)} placeholder="Optional starter code shown in the editor." /></label>
           <label>Points<input type="number" min="1" max="1000" required value={question.maxScore} onChange={(event) => updateQuestion(index, 'maxScore', event.target.value)} /></label>

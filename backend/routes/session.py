@@ -256,6 +256,9 @@ def run_question(session_id, question_id):
         return jsonify({"error": "Request body required"}), 400
     code = data.get("code")
     language_id = data.get("language_id", 71)
+    submit = data.get("submit", True)
+    if not isinstance(submit, bool):
+        return jsonify({"error": "submit must be a boolean"}), 400
     if not isinstance(code, str) or not code.strip():
         return jsonify({"error": "Code cannot be empty"}), 400
     if len(code.encode("utf-8")) > MAX_SOURCE_BYTES:
@@ -273,7 +276,12 @@ def run_question(session_id, question_id):
     if not question:
         return jsonify({"error": "Question not found"}), 404
 
-    tests = question.get("test_cases", [])
+    all_tests = question.get("test_cases", [])
+    # Run-tests requests can exercise only professor-marked public cases.
+    # Hidden cases run only when a student submits for a recorded grade.
+    tests = all_tests if submit else [case for case in all_tests if not case.get("hidden", True)]
+    if not tests:
+        return jsonify({"error": "This question has no public test cases to run. Submit your solution when it is ready."}), 400
     results = []
     passed = 0
     for index, case in enumerate(tests, start=1):
@@ -294,15 +302,20 @@ def run_question(session_id, question_id):
         })
 
     total = len(tests)
-    score = round(question["max_score"] * passed / total) if total else 0
+    score = round(question["max_score"] * passed / total) if total and submit else None
     overall_status = "Accepted" if passed == total else "Partial" if passed else "Failed"
-    store_exam_submission(session_id, question_id, student_name, score, passed, total, overall_status)
+    visible_results = [result for result, case in zip(results, tests) if not case.get("hidden", True)]
+    if submit:
+        store_exam_submission(session_id, question_id, student_name, score, passed, total, overall_status)
     return jsonify({
         "status": overall_status,
         "score": score,
-        "max_score": question["max_score"],
+        "max_score": question["max_score"] if submit else None,
         "passed_tests": passed,
         "total_tests": total,
-        "test_results": results,
+        "submitted": submit,
+        # Show details only for public samples; hidden-case outcomes are reflected
+        # in the aggregate score without exposing a per-case oracle.
+        "test_results": visible_results,
         "leaderboard": get_exam_leaderboard(session_id),
     })
