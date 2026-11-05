@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { signInWithPopup, signOut as firebaseSignOut } from '@firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { googleLogin } from '../services/api';
@@ -40,6 +40,19 @@ export function AuthProvider({ children }) {
   const { user, token, sessionId, sessionCode } = state;
   const loading = false;
   const googleConfigured = Boolean(auth && googleProvider);
+
+  useEffect(() => {
+    function handleExpiredSession() {
+      setState({ user: null, token: null, sessionId: null, sessionCode: null });
+      localStorage.removeItem('teamfit_user');
+      localStorage.removeItem('teamfit_token');
+      localStorage.removeItem('teamfit_session_id');
+      localStorage.removeItem('teamfit_session_code');
+      if (auth) firebaseSignOut(auth).catch(() => {});
+    }
+    window.addEventListener('teamfit:auth-expired', handleExpiredSession);
+    return () => window.removeEventListener('teamfit:auth-expired', handleExpiredSession);
+  }, []);
 
   function loginUser(userData, tokenValue) {
     setState((previous) => ({ ...previous, user: userData, token: tokenValue }));
