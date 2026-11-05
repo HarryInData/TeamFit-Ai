@@ -12,6 +12,17 @@ SUPPORTED_LANGUAGES = {50, 54, 62, 63, 71}
 MAX_SOURCE_BYTES = 64 * 1024
 MAX_STDOUT_BYTES = 32 * 1024
 MAX_STDERR_BYTES = 32 * 1024
+# Fixed execution envelope; clients cannot raise these values per submission.
+EXECUTION_LIMITS = {
+    "cpu_time_limit": 2,
+    "cpu_extra_time": 0.5,
+    "wall_time_limit": 5,
+    "memory_limit": 128_000,
+    "stack_limit": 64_000,
+    "max_processes_and_or_threads": 20,
+    "max_file_size": 1_024,
+    "enable_network": False,
+}
 
 
 class ExecutionUnavailable(Exception):
@@ -42,7 +53,7 @@ def execute_code(source_code: str, language_id: int = 71) -> dict:
     try:
         response = requests.post(
             f"{base_url}/submissions?wait=true&base64_encoded=false",
-            json={"source_code": source_code, "language_id": language_id},
+            json={"source_code": source_code, "language_id": language_id, **EXECUTION_LIMITS},
             headers=headers,
             timeout=(3, 20),
         )
