@@ -32,12 +32,10 @@ class Config:
     FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
     FIREBASE_WEB_API_KEY = os.environ.get("FIREBASE_WEB_API_KEY", "")
 
-    # ── Isolated code execution (Judge0 CE hosted through RapidAPI) ──
-    JUDGE0_API_KEY = os.environ.get("JUDGE0_API_KEY", "")
-    JUDGE0_URL = os.environ.get("JUDGE0_URL", "https://judge0-ce.p.rapidapi.com")
-    JUDGE0_HOST = os.environ.get("JUDGE0_HOST", "judge0-ce.p.rapidapi.com")
-    JUDGE0_AUTH_HEADER = os.environ.get("JUDGE0_AUTH_HEADER", "")
-    JUDGE0_AUTH_TOKEN = os.environ.get("JUDGE0_AUTH_TOKEN", "")
+    # ── Isolated code execution (self-hosted Piston) ──
+    PISTON_URL = os.environ.get("PISTON_URL", "")
+    PISTON_AUTH_HEADER = os.environ.get("PISTON_AUTH_HEADER", "")
+    PISTON_AUTH_TOKEN = os.environ.get("PISTON_AUTH_TOKEN", "")
 
     # ── Server ──
     FLASK_DEBUG = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
@@ -62,7 +60,10 @@ class Config:
                 raise RuntimeError("Production CORS_ORIGINS must use HTTPS")
             if cls.FLASK_DEBUG:
                 raise RuntimeError("FLASK_DEBUG must be false in production")
-            if not cls.JUDGE0_URL.startswith("https://"):
-                raise RuntimeError("JUDGE0_URL must use HTTPS in production")
+            if cls.PISTON_URL:
+                if not cls.PISTON_URL.startswith("https://"):
+                    raise RuntimeError("PISTON_URL must use HTTPS in production")
+                if not cls.PISTON_AUTH_HEADER or len(cls.PISTON_AUTH_TOKEN) < 32:
+                    raise RuntimeError("Configure a strong PISTON_AUTH_TOKEN and PISTON_AUTH_HEADER in production")
             if not cls.FIREBASE_PROJECT_ID or not cls.FIREBASE_WEB_API_KEY:
                 raise RuntimeError("FIREBASE_PROJECT_ID and FIREBASE_WEB_API_KEY must be configured in production")

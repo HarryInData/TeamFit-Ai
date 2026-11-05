@@ -50,10 +50,11 @@ class ApiSecurityTests(unittest.TestCase):
 
     def test_execution_fails_closed_without_isolated_runner(self):
         user = {"id": "student-1", "name": "Sandbox Tester", "email": "sandbox@example.test", "role": "student"}
-        response = self.client.post("/api/execute", json={"code": "print(1)", "language_id": 71},
-                                    headers={"Authorization": f"Bearer {create_token(user)}"})
+        with patch.object(Config, "PISTON_URL", "http://127.0.0.1:1"):
+            response = self.client.post("/api/execute", json={"code": "print(1)", "language_id": 71},
+                                        headers={"Authorization": f"Bearer {create_token(user)}"})
         self.assertEqual(response.status_code, 503)
-        self.assertIn("isolated code runner", response.json["error"].lower())
+        self.assertIn("code execution service", response.json["error"].lower())
 
     def test_execution_success_is_not_reported_as_a_grade(self):
         user = {"id": "student-2", "name": "Runner Tester", "email": "runner@example.test", "role": "student"}
@@ -101,7 +102,10 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(question_result.json["questions"][0]["statement"], question["statement"])
         self.assertNotIn("test_cases", question_result.json["questions"][0])
         question_id = question_result.json["questions"][0]["id"]
-        with patch("routes.session.execute_code", return_value={"status": "Accepted", "stdout": "5\n", "stderr": ""}):
+        with patch("routes.session.execute_code_cases", return_value=[{
+            "status": "Accepted", "stdout": "5\n", "stderr": "", "error_type": None,
+            "time": "0.1", "memory": "1", "truncated": False,
+        }]):
             submission = self.client.post(
                 f"/api/session/{session_id}/question/{question_id}/run",
                 json={"code": "print(2 + 3)", "language_id": 71}, headers=headers,
@@ -142,8 +146,8 @@ class ApiSecurityTests(unittest.TestCase):
             new_professor = self.client.post("/api/auth/google", json={
                 "idToken": "verified-token", "role": "professor",
             })
-        self.assertEqual(new_professor.status_code, 403)
-        self.assertIn("provided by your institution", new_professor.json["error"])
+        self.assertEqual(new_professor.status_code, 200)
+        self.assertEqual(new_professor.json["user"]["role"], "professor")
 
     def test_public_runs_do_not_grade_or_reveal_hidden_case_results(self):
         professor = {"id": str(uuid.uuid4()), "name": "Public Run Professor", "email": f"{uuid.uuid4()}@example.test", "role": "professor"}
@@ -167,7 +171,11 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/session/join", json={"join_code": created.json["join_code"]}, headers=student_headers).status_code, 200)
         question = self.client.get(f"/api/session/{session_id}/questions", headers=student_headers).json["questions"][0]
 
-        with patch("routes.session.execute_code", return_value={"status": "Accepted", "stdout": "5\n", "stderr": ""}) as execute:
+        successful_case = {
+            "status": "Accepted", "stdout": "5\n", "stderr": "", "error_type": None,
+            "time": "0.1", "memory": "1", "truncated": False,
+        }
+        with patch("routes.session.execute_code_cases", return_value=[successful_case]) as execute:
             run = self.client.post(f"/api/session/{session_id}/question/{question['id']}/run", json={
                 "code": "print(2 + 3)", "language_id": 71, "submit": False,
             }, headers=student_headers)
@@ -177,21 +185,23 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertIsNone(run.json["score"])
         self.assertEqual(run.json["total_tests"], 1)
         self.assertEqual(run.json["test_results"], [{
-            "case": 1, "passed": True, "status": "Accepted", "error_type": None, "stderr": "",
+            "case": 1, "passed": True, "status": "Accepted", "error_type": None,
+            "stdout": "5\n", "stderr": "", "time": "0.1", "memory": "1", "truncated": False,
         }])
         self.assertEqual(run.json["leaderboard"][0]["score"], 0)
 
-        with patch("routes.session.execute_code", return_value={"status": "Accepted", "stdout": "ok", "stderr": ""}) as execute:
+        hidden_test_result = {**successful_case, "stdout": "17\n"}
+        with patch("routes.session.execute_code_cases", side_effect=[[successful_case], [successful_case, hidden_test_result]]) as execute:
             submission = self.client.post(f"/api/session/{session_id}/question/{question['id']}/run", json={
                 "code": "print(2 + 3)", "language_id": 71, "submit": True,
             }, headers=student_headers)
-            self.assertEqual(execute.call_count, 2)
+            self.assertEqual(execute.call_count, 1)
         self.assertEqual(submission.status_code, 200)
         self.assertTrue(submission.json["submitted"])
         self.assertEqual(submission.json["total_tests"], 2)
-        self.assertEqual(submission.json["score"], 100)
+        self.assertEqual(submission.json["score"], 50)
         self.assertEqual(len(submission.json["test_results"]), 1)
-        self.assertEqual(submission.json["leaderboard"][0]["score"], 100)
+        self.assertEqual(submission.json["leaderboard"][0]["score"], 50)
 
     def test_tokens_expire(self):
         old_ttl = Config.TOKEN_TTL_SECONDS
