@@ -15,10 +15,10 @@ const SIDEBAR_LINKS = [
 const NAV_LINKS = ['Dashboard', 'Analytics', 'Students', 'Projects'];
 const DONUT_COLORS = ['#6C5CE7', '#3B82F6', '#FFB800', '#FF4757'];
 const BADGE_MAP = {
-  high: { label: '🔥 TOP PERFORMER', className: 'dash-badge--top' },
-  low: { label: '⚠ LOW CONTRIBUTION', className: 'dash-badge--low' },
-  steady: { label: '✅ STEADY CONTRIBUTOR', className: 'dash-badge--steady' },
-  developing: { label: '📈 DEVELOPING', className: 'dash-badge--dev' },
+  high: { label: '🔥 HIGH KEYSTROKE SHARE', className: 'dash-badge--top' },
+  low: { label: '⚠ LOW KEYSTROKE SHARE', className: 'dash-badge--low' },
+  steady: { label: '✅ MID KEYSTROKE SHARE', className: 'dash-badge--steady' },
+  developing: { label: '📈 MID KEYSTROKE SHARE', className: 'dash-badge--dev' },
 };
 
 function getBadge(contribution) {
@@ -175,12 +175,12 @@ export default function Dashboard() {
             <div className="dash-stat-value">{data.total_students}</div>
           </div>
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Active Today</div>
+            <div className="dash-stat-label">Active Now</div>
             <div className="dash-stat-value">{data.active_count}</div>
           </div>
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Average Latest Run Score</div>
-            <div className="dash-stat-value">{data.average_score || 0}</div>
+            <div className="dash-stat-label">Automated Grading</div>
+            <div className="dash-stat-value">Not configured</div>
           </div>
         </div>
 
@@ -207,7 +207,7 @@ export default function Dashboard() {
           <div className="dash-table-header">
             <span>Student</span>
             <span>Role</span>
-            <span>Score</span>
+            <span>Grade</span>
             <span>Keystrokes</span>
             <span>Activity</span>
           </div>
@@ -220,7 +220,7 @@ export default function Dashboard() {
                 {s.student}
               </span>
               <span>{s.role || 'Developer'}</span>
-              <span>{s.score || 0}</span>
+              <span>Not graded</span>
               <span>{s.keystrokes || 0}</span>
               <span className={`dash-activity-badge dash-activity-badge--${s.activity || 'idle'}`}>
                 {s.activity || 'idle'}
@@ -346,11 +346,8 @@ export default function Dashboard() {
         {/* Stat Cards */}
         <div className="dash-stat-row">
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Average Latest Run Score</div>
-            <div className="dash-stat-value">
-              {Math.round(data.average_score * 0.87 + 13)}%
-              <span className="dash-stat-delta dash-stat-delta--up">+12.5% vs avg</span>
-            </div>
+            <div className="dash-stat-label">Automated Grading</div>
+            <div className="dash-stat-value">Not configured</div>
             <div className="dash-stat-icon">📊</div>
           </div>
           <div className="dash-stat-card">
@@ -364,8 +361,8 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Active Time</div>
-            <div className="dash-stat-value">{data.active_time ?? 'Not tracked'}</div>
+            <div className="dash-stat-label">Activity History</div>
+            <div className="dash-stat-value">Not tracked</div>
           </div>
         </div>
 
@@ -392,10 +389,8 @@ export default function Dashboard() {
         {/* Stat Cards */}
         <div className="dash-stat-row">
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Average Latest Run Score</div>
-            <div className="dash-stat-value">
-              {data.average_score}%
-            </div>
+            <div className="dash-stat-label">Automated Grading</div>
+            <div className="dash-stat-value">Not configured</div>
             <div className="dash-stat-icon">📊</div>
           </div>
           <div className="dash-stat-card">
@@ -409,8 +404,8 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="dash-stat-card">
-            <div className="dash-stat-label">Active Time</div>
-            <div className="dash-stat-value">{data.active_time ?? 'Not tracked'}</div>
+            <div className="dash-stat-label">Activity History</div>
+            <div className="dash-stat-value">Not tracked</div>
           </div>
         </div>
 
@@ -780,7 +775,7 @@ export default function Dashboard() {
               <div className="dash-perf-avatar" style={{ background: '#3B82F6' }}>📊</div>
               <div>
                 <div className="dash-perf-name">Student Data (CSV)</div>
-                <div className="dash-perf-role">Grades and scores</div>
+                <div className="dash-perf-role">Participation metrics</div>
               </div>
             </div>
           </button>

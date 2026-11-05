@@ -59,8 +59,8 @@ TEAMFITAI/
 |--------|----------|-------------|
 | POST | `/api/auth/login` | Login with email/password/role |
 | POST | `/api/auth/register` | Register new user |
-| GET | `/api/students` | List all students |
-| POST | `/api/students` | Create/update student |
+| GET | `/api/students` | List students (professor role required) |
+| POST | `/api/students` | Record session-scoped student activity (authenticated session member) |
 | POST | `/api/execute` | Run code in isolated Judge0 (authenticated) |
 | GET | `/api/dashboard` | Professor analytics data (professor role required) |
 | GET | `/api/health` | Health check |
@@ -71,10 +71,11 @@ TEAMFITAI/
 {
   "student": "string",
   "keystrokes": 0,
-  "score": 0,
   "activity": "string"
 }
 ```
+
+Execution responses report process status and output. They are not assignment grades; assignment tests and grading are not implemented.
 
 ## Production configuration
 
@@ -84,3 +85,5 @@ PostgreSQL `DATABASE_URL`, and explicit HTTPS frontend origins in
 configure Judge0 as described in [backend/SANDBOX.md](backend/SANDBOX.md).
 Production startup fails when required secret/database/CORS configuration is
 missing. Run the app with Gunicorn behind a TLS-terminating reverse proxy.
+
+See [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md) for the current audit rating, release blockers, and prioritized production-readiness plan.

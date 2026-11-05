@@ -34,7 +34,6 @@ def get_students():
         result.append({
             "student": s["name"],
             "keystrokes": s["keystrokes"],
-            "score": s["score"],
             "activity": s["activity"],
             "role": s["role"],
             "contribution": s["contribution"],
@@ -77,7 +76,6 @@ def upsert_student_route():
     return jsonify({
         "student": student.get("name", name),
         "keystrokes": student.get("keystrokes", keystrokes),
-        "score": student.get("score", score),
         "activity": student.get("activity", activity),
         "role": student.get("role", role),
         "contribution": student.get("contribution", 0),
@@ -96,7 +94,6 @@ def get_student(name: str):
     return jsonify({
         "student": student["name"],
         "keystrokes": student["keystrokes"],
-        "score": student["score"],
         "activity": student["activity"],
         "role": student["role"],
         "contribution": student["contribution"],

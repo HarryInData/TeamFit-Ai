@@ -1,6 +1,7 @@
 import sys
 import unittest
 import uuid
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -43,6 +44,15 @@ class ApiSecurityTests(unittest.TestCase):
                                     headers={"Authorization": f"Bearer {create_token(user)}"})
         self.assertEqual(response.status_code, 503)
         self.assertIn("isolated code runner", response.json["error"].lower())
+
+    def test_execution_success_is_not_reported_as_a_grade(self):
+        user = {"id": "student-2", "name": "Runner Tester", "email": "runner@example.test", "role": "student"}
+        with patch("routes.execute.execute_code", return_value={"status": "Accepted", "stdout": "ok"}):
+            response = self.client.post("/api/execute", json={"code": "print('ok')", "language_id": 71},
+                                        headers={"Authorization": f"Bearer {create_token(user)}"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["status"], "Accepted")
+        self.assertNotIn("score", response.json)
 
     def test_activity_is_scoped_to_a_session_and_requires_membership(self):
         name = f"Session Tester {uuid.uuid4().hex[:8]}"

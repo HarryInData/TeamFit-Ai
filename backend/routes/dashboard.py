@@ -29,7 +29,6 @@ def get_dashboard():
         students.append({
             "student": s["name"],
             "keystrokes": s["keystrokes"],
-            "score": s["score"],
             "activity": s["activity"],
             "role": s["role"],
             "contribution": s["contribution"],
@@ -39,9 +38,6 @@ def get_dashboard():
 
     # Calculate averages
     total_ks = sum(s.get("keystrokes", 0) for s in students)
-    avg_score = (
-        sum(s.get("score", 0) for s in students) / total if total > 0 else 0
-    )
     active_count = sum(
         1 for s in students if s.get("activity", "idle") != "idle"
     )
@@ -75,7 +71,6 @@ def get_dashboard():
         "students": students,
         "total_students": total,
         "total_keystrokes": total_ks,
-        "average_score": round(avg_score, 1),
         "active_count": active_count,
         "contribution_split": contribution_split,
         "activity_timeline": activity_timeline,
@@ -93,7 +88,7 @@ def generate_report():
     """Generate a report — returns JSON."""
     students_raw = get_all_students()
     students = [
-        {"student": s["name"], "keystrokes": s["keystrokes"], "score": s["score"],
+        {"student": s["name"], "keystrokes": s["keystrokes"],
          "activity": s["activity"], "contribution": s["contribution"]}
         for s in students_raw
     ]

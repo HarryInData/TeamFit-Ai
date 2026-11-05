@@ -32,7 +32,7 @@ def get_ai_insights():
         raw = get_all_students()
         student_data = [
             {"student": s["name"], "keystrokes": s["keystrokes"],
-             "score": s["score"], "activity": s["activity"],
+             "activity": s["activity"],
              "contribution": s["contribution"]}
             for s in raw
         ]
@@ -56,7 +56,7 @@ def get_ai_insights_live():
     raw = get_all_students()
     student_data = [
         {"student": s["name"], "keystrokes": s["keystrokes"],
-         "score": s["score"], "activity": s["activity"],
+         "activity": s["activity"],
          "contribution": s["contribution"]}
         for s in raw
     ]

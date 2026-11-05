@@ -180,7 +180,7 @@ export default function Workspace() {
         stdout: '',
         stderr: 'Error: Code cannot be empty. Write some code first!',
         status: 'Error',
-        time: '0', memory: '0', score: 0,
+        time: '0', memory: '0',
       });
       setConsoleTab('output');
       return;
@@ -201,7 +201,6 @@ export default function Workspace() {
         status: 'Error',
         time: '0',
         memory: '0',
-        score: 0,
       });
     } finally {
       setRunning(false);
@@ -471,9 +470,6 @@ export default function Workspace() {
                 <>
                   <div className={`ws-console-status ${output.status === 'Accepted' ? 'ws-console-status--success' : 'ws-console-status--error'}`}>
                     {output.status === 'Accepted' ? '✓ Execution Successful.' : `✗ Execution Failed: ${output.status}`}
-                    {output.score !== undefined && (
-                      <span className="ws-console-score"> — Score: {output.score}/100</span>
-                    )}
                   </div>
                   {output.stdout && <pre className="ws-console-text">{output.stdout}</pre>}
                   {output.stderr && <pre className="ws-console-text ws-console-text--error">{output.stderr}</pre>}

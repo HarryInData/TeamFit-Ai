@@ -12,7 +12,7 @@ import threading
 import uuid
 import secrets
 import string
-from datetime import datetime
+from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
 
 logger = logging.getLogger("teamfit")
@@ -347,7 +347,7 @@ def seed_students():
 
 def upsert_student(name: str, keystrokes: int = 0, score: int = 0, activity: str = "idle", role: str = "") -> dict:
     """Insert or update student. Keystrokes are INCREMENTED, not overwritten."""
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     with _db_lock:
         conn = get_db()
         existing = _fetchone(conn, f"SELECT * FROM students WHERE name = {_ph()}", (name,))
@@ -426,7 +426,7 @@ def _recalculate_contributions(conn):
 
 def update_student_score(name: str, score: int, activity: str = "submitted"):
     """Update just the score and activity for a student."""
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     with _db_lock:
         conn = get_db()
         _execute(conn,
@@ -610,7 +610,7 @@ def record_session_activity(session_id: str, user_name: str, keystrokes: int, ac
                    ON CONFLICT (session_id, user_name) DO UPDATE SET
                    keystrokes = session_activity.keystrokes + EXCLUDED.keystrokes,
                    activity = EXCLUDED.activity, updated_at = CURRENT_TIMESTAMP""",
-                (session_id, user_name, keystrokes, activity, datetime.utcnow()),
+                (session_id, user_name, keystrokes, activity, datetime.now(timezone.utc).replace(tzinfo=None)),
             )
         else:
             _execute(conn,
@@ -619,7 +619,8 @@ def record_session_activity(session_id: str, user_name: str, keystrokes: int, ac
                    ON CONFLICT(session_id, user_name) DO UPDATE SET
                    keystrokes = session_activity.keystrokes + excluded.keystrokes,
                    activity = excluded.activity, updated_at = excluded.updated_at""",
-                (session_id, user_name, keystrokes, activity, datetime.utcnow().isoformat()),
+                (session_id, user_name, keystrokes, activity,
+                 datetime.now(timezone.utc).replace(tzinfo=None).isoformat()),
             )
         conn.commit()
         conn.close()
