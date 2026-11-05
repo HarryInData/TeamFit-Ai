@@ -9,7 +9,7 @@ from models.database import (
     list_open_exams, start_session, close_session, auto_idle_stale_students,
     get_exam_question, store_exam_submission, get_exam_leaderboard
 )
-from services.render_sandbox import execute_code_cases, ExecutionUnavailable, SUPPORTED_LANGUAGES, MAX_SOURCE_BYTES
+from services.judge0 import execute_code_cases, ExecutionUnavailable, SUPPORTED_LANGUAGES, MAX_SOURCE_BYTES
 from services.ai_summary import generate_ai_summary
 from middleware.auth import jwt_required, roles_required
 

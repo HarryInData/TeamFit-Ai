@@ -15,7 +15,7 @@ The repository has a usable React/Flask prototype and now has safer authenticati
 
 ## Changes made in this hardening pass
 
-- Replaced Judge0 execution with an authenticated Render Sandbox adapter. Each question's test cases share one disposable network-disabled microVM; provider failure returns an error instead of executing code in the web process.
+- Student code runs through Judge0 CE's isolated execution workers. The free RapidAPI Basic plan is suitable for development and small demonstrations; confirm its current quota before using it for a full class exam.
 - Added JWT expiry, password hashing and legacy password migration, student-only self-registration, verified Firebase token handling, and role checks on sensitive routes.
 - Added request-size and input validation, production startup configuration checks, database-aware health reporting, and session membership checks for activity writes.
 - Scoped session activity and contribution totals to each coding session.

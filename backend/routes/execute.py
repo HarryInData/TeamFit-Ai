@@ -1,7 +1,7 @@
 """Authenticated endpoint for isolated source-code execution."""
 
 from flask import Blueprint, request, jsonify
-from services.render_sandbox import execute_code, ExecutionUnavailable
+from services.judge0 import execute_code, ExecutionUnavailable
 from middleware.auth import jwt_required
 
 execute_bp = Blueprint("execute", __name__)
@@ -11,7 +11,7 @@ execute_bp = Blueprint("execute", __name__)
 @jwt_required
 def run_code():
     """
-    Execute code in an isolated Render Sandbox. This reports execution status only; assignment
+    Execute code in an isolated Judge0 sandbox. This reports execution status only; assignment
     grading requires explicit test cases and is not implemented.
     Body: { code, language_id, student }
     """
