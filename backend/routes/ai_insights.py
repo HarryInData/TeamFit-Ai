@@ -4,6 +4,8 @@ POST /api/ai-insights — accepts custom data or uses DB
 GET  /api/ai-insights — uses live DB data
 """
 
+import logging
+
 from flask import Blueprint, request, jsonify
 from models.database import get_all_students
 from services.ai_engine import execute_ai_analysis
@@ -12,6 +14,7 @@ from config import Config
 from middleware.auth import roles_required
 
 ai_insights_bp = Blueprint("ai_insights", __name__)
+logger = logging.getLogger(__name__)
 
 
 @ai_insights_bp.route("/ai/generate-question", methods=["POST"])
@@ -34,6 +37,7 @@ def generate_question():
     except RuntimeError as exc:
         return jsonify({"error": str(exc)}), 503
     except Exception:
+        logger.exception("AI question generation failed")
         return jsonify({"error": "AI could not generate a valid question. Please try again."}), 502
     return jsonify({"question": question})
 

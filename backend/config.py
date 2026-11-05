@@ -25,6 +25,8 @@ class Config:
 
     # ── AI ──
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+    # Keep this configurable because hosted model IDs can be retired by providers.
+    GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
     # ── Firebase Authentication ──
     FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
