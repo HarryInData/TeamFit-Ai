@@ -60,6 +60,18 @@ class Judge0SandboxTests(unittest.TestCase):
         self.assertEqual(result["stdout"], "42\n")
         self.assertEqual(post.call_args.kwargs["headers"]["X-Auth-User"], "secret-test-token")
 
+    @patch("services.judge0.requests.post")
+    def test_submissions_have_resource_limits_and_network_disabled(self, post):
+        Config.JUDGE0_URL = "http://judge0.test"
+        post.return_value = Mock(status_code=201, json=lambda: {"status": {"description": "Accepted"}})
+        execute_code("print(1)", 71)
+        payload = post.call_args.kwargs["json"]
+        self.assertEqual(payload["cpu_time_limit"], 2)
+        self.assertEqual(payload["wall_time_limit"], 5)
+        self.assertEqual(payload["memory_limit"], 128_000)
+        self.assertEqual(payload["max_processes_and_or_threads"], 20)
+        self.assertFalse(payload["enable_network"])
+
 
 if __name__ == "__main__":
     unittest.main()

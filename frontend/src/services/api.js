@@ -116,6 +116,10 @@ export async function getDashboard() {
   });
 }
 
+export async function getStudentDashboard() {
+  return apiFetch(`${API_BASE}/student/dashboard`, { headers: authHeaders() });
+}
+
 export async function generateReport() {
   return apiFetch(`${API_BASE}/dashboard/report`, {
     headers: authHeaders(),
@@ -137,19 +141,21 @@ export async function getAIInsights(students = null) {
 
 /* ── Sessions ── */
 
-export async function createSession(title = 'Coding Session') {
+export async function createSession(title = 'Practical Exam', questions = []) {
   return apiFetch(`${API_BASE}/session/create`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ title }),
+    body: JSON.stringify({ title, questions }),
   });
 }
 
 export async function joinSession(joinCode) {
+  const value = String(joinCode ?? '').trim();
+  const payload = /^TF-/i.test(value) ? { join_code: value.toUpperCase() } : { session_id: value };
   return apiFetch(`${API_BASE}/session/join`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ join_code: joinCode }),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -168,6 +174,37 @@ export async function getSessionMembers(sessionId) {
 export async function listSessions() {
   return apiFetch(`${API_BASE}/sessions`, {
     headers: authHeaders(),
+  });
+}
+
+export async function listOpenSessions() {
+  return apiFetch(`${API_BASE}/sessions/open`, { headers: authHeaders() });
+}
+
+export async function getExamQuestions(sessionId) {
+  return apiFetch(`${API_BASE}/session/${sessionId}/questions`, { headers: authHeaders() });
+}
+
+export async function startExam(sessionId) {
+  return apiFetch(`${API_BASE}/session/${sessionId}/start`, {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify({}),
+  });
+}
+
+export async function closeExam(sessionId) {
+  return apiFetch(`${API_BASE}/session/${sessionId}/close`, {
+    method: 'POST', headers: authHeaders(), body: JSON.stringify({}),
+  });
+}
+
+export async function getLeaderboard(sessionId) {
+  return apiFetch(`${API_BASE}/session/${sessionId}/leaderboard`, { headers: authHeaders() });
+}
+
+export async function runExamQuestion(sessionId, questionId, code, languageId = 71, submit = true) {
+  return apiFetch(`${API_BASE}/session/${sessionId}/question/${questionId}/run`, {
+    method: 'POST', headers: authHeaders(),
+    body: JSON.stringify({ code, language_id: languageId, submit }),
   });
 }
 

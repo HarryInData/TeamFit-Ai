@@ -128,4 +128,6 @@ if __name__ == "__main__":
     print("[#] Auth: JWT (Bearer token)")
     print(f"[=] Database: {db_label}")
     print(f"[~] CORS Origins: {Config.CORS_ORIGINS}")
-    app.run(debug=Config.FLASK_DEBUG, port=port, host="127.0.0.1")
+    # Render and other container platforms route traffic to the container's
+    # network interface, so binding to loopback makes the service unreachable.
+    app.run(debug=Config.FLASK_DEBUG, port=port, host="0.0.0.0")

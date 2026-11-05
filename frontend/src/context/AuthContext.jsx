@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
   const [state, setState] = useState(readInitialState);
   const { user, token, sessionId, sessionCode } = state;
   const loading = false;
+  const googleConfigured = Boolean(auth && googleProvider);
 
   function loginUser(userData, tokenValue) {
     setState((previous) => ({ ...previous, user: userData, token: tokenValue }));
@@ -52,6 +53,9 @@ export function AuthProvider({ children }) {
    * for server-side verification and JWT generation.
    */
   async function signInWithGoogle(role) {
+    if (!auth || !googleProvider) {
+      throw new Error('Google sign-in is not configured. Use email and password instead.');
+    }
     const result = await signInWithPopup(auth, googleProvider);
     const idToken = await result.user.getIdToken();
     const data = await googleLogin(idToken, role);
@@ -78,12 +82,13 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('teamfit_session_id');
     localStorage.removeItem('teamfit_session_code');
     // Also sign out of Firebase to clear Google session
-    firebaseSignOut(auth).catch(() => {});
+    if (auth) firebaseSignOut(auth).catch(() => {});
   }
 
   return (
     <AuthContext.Provider value={{
       user, token, loading,
+      googleConfigured,
       sessionId, sessionCode,
       loginUser, logout,
       signInWithGoogle,

@@ -12,7 +12,11 @@ failures into HTTP 503 responses.
 Set `JUDGE0_URL`, `JUDGE0_API_KEY`, and `JUDGE0_HOST` in `backend/.env`. Keep the
 API key only on the backend. Never add it to a `VITE_*` variable or commit it.
 The browser receives stdout/stderr, execution status, and safe resource
-statistics only.
+statistics only. Each submission requests fixed limits of 2 seconds CPU, 5
+seconds wall time, 128,000 KB memory, 64,000 KB stack, 20 processes/threads,
+and 1,024 KB per file; it explicitly disables sandbox network access. Configure
+Judge0's allowed submission maxima to accept these values and enforce equal or
+tighter limits again in the isolated worker.
 
 ## Use self-hosted Judge0
 

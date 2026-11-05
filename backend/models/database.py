@@ -12,6 +12,7 @@ import threading
 import uuid
 import secrets
 import string
+import json
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash
 
@@ -142,6 +143,7 @@ def init_db():
                 join_code TEXT UNIQUE NOT NULL,
                 title TEXT DEFAULT 'Coding Session',
                 created_by TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -174,6 +176,34 @@ def init_db():
                 PRIMARY KEY(session_id, user_name)
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS exam_questions (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                statement TEXT NOT NULL,
+                examples_json TEXT NOT NULL DEFAULT '[]',
+                starter_code TEXT NOT NULL DEFAULT '',
+                test_cases_json TEXT NOT NULL DEFAULT '[]',
+                max_score INTEGER NOT NULL DEFAULT 100,
+                position INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS exam_submissions (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                question_id TEXT NOT NULL,
+                student_name TEXT NOT NULL,
+                score INTEGER NOT NULL DEFAULT 0,
+                passed_tests INTEGER NOT NULL DEFAULT 0,
+                total_tests INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL,
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("ALTER TABLE sessions ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'")
     else:
         # SQLite DDL
         cur.executescript("""
@@ -203,6 +233,7 @@ def init_db():
                 join_code TEXT UNIQUE NOT NULL,
                 title TEXT DEFAULT 'Coding Session',
                 created_by TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -231,7 +262,35 @@ def init_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY(session_id, user_name)
             );
+
+            CREATE TABLE IF NOT EXISTS exam_questions (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                statement TEXT NOT NULL,
+                examples_json TEXT NOT NULL DEFAULT '[]',
+                starter_code TEXT NOT NULL DEFAULT '',
+                test_cases_json TEXT NOT NULL DEFAULT '[]',
+                max_score INTEGER NOT NULL DEFAULT 100,
+                position INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS exam_submissions (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                question_id TEXT NOT NULL,
+                student_name TEXT NOT NULL,
+                score INTEGER NOT NULL DEFAULT 0,
+                passed_tests INTEGER NOT NULL DEFAULT 0,
+                total_tests INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL,
+                submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         """)
+        session_columns = {row[1] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()}
+        if "status" not in session_columns:
+            conn.execute("ALTER TABLE sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'open'")
 
     cur.close()
     conn.commit()
@@ -493,8 +552,8 @@ def _generate_join_code():
     return code
 
 
-def create_session(created_by: str, title: str = "Coding Session") -> dict:
-    """Create a new session with a unique join code."""
+def create_session(created_by: str, title: str = "Coding Session", questions: list = None) -> dict:
+    """Create a professor-owned draft exam and its questions."""
     session_id = str(uuid.uuid4())
     join_code = _generate_join_code()
 
@@ -505,14 +564,24 @@ def create_session(created_by: str, title: str = "Coding Session") -> dict:
             join_code = _generate_join_code()
 
         _execute(conn,
-            f"INSERT INTO sessions (id, join_code, title, created_by) VALUES ({_ph(4)})",
-            (session_id, join_code, title, created_by),
+            f"INSERT INTO sessions (id, join_code, title, created_by, status) VALUES ({_ph(5)})",
+            (session_id, join_code, title, created_by, "draft"),
         )
         # Auto-add creator as member
         _execute(conn,
             f"INSERT INTO session_members (session_id, user_name, role) VALUES ({_ph(3)})",
-            (session_id, created_by, "owner"),
+            (session_id, created_by, "professor"),
         )
+        for position, question in enumerate(questions or []):
+            _execute(conn,
+                f"""INSERT INTO exam_questions
+                   (id, session_id, title, statement, examples_json, starter_code,
+                    test_cases_json, max_score, position)
+                   VALUES ({_ph(9)})""",
+                (str(uuid.uuid4()), session_id, question["title"], question["statement"],
+                 json.dumps(question["examples"]), question["starter_code"],
+                 json.dumps(question["test_cases"]), question["max_score"], position),
+            )
         conn.commit()
         conn.close()
 
@@ -521,6 +590,7 @@ def create_session(created_by: str, title: str = "Coding Session") -> dict:
         "join_code": join_code,
         "title": title,
         "created_by": created_by,
+        "status": "draft",
     }
 
 
@@ -542,6 +612,9 @@ def join_session(user_name: str, session_id: str = None, join_code: str = None) 
             return None
 
         if not session:
+            conn.close()
+            return None
+        if session.get("status") != "open":
             conn.close()
             return None
 
@@ -635,14 +708,213 @@ def get_session_by_code(join_code: str) -> dict:
     return row
 
 
-def get_all_sessions() -> list:
-    """Get all active sessions (for professor dashboard)."""
+def get_session(session_id: str) -> dict:
     conn = get_db()
-    rows = _fetchall(conn, "SELECT * FROM sessions ORDER BY created_at DESC")
+    row = _fetchone(conn, f"SELECT * FROM sessions WHERE id = {_ph()}", (session_id,))
+    conn.close()
+    return row
+
+
+def start_session(session_id: str, professor_name: str) -> bool:
+    with _db_lock:
+        conn = get_db()
+        session = _fetchone(conn,
+            f"SELECT id FROM sessions WHERE id = {_ph()} AND created_by = {_ph()}",
+            (session_id, professor_name),
+        )
+        question = _fetchone(conn,
+            f"SELECT id FROM exam_questions WHERE session_id = {_ph()} LIMIT 1", (session_id,)
+        )
+        if not session or not question:
+            conn.close()
+            return False
+        _execute(conn, f"UPDATE sessions SET status = 'open' WHERE id = {_ph()}", (session_id,))
+        conn.commit()
+        conn.close()
+    return True
+
+
+def close_session(session_id: str, professor_name: str) -> bool:
+    with _db_lock:
+        conn = get_db()
+        cursor = _execute(conn,
+            f"UPDATE sessions SET status = 'closed' WHERE id = {_ph()} AND created_by = {_ph()} AND status = 'open'",
+            (session_id, professor_name),
+        )
+        changed = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+    return changed
+
+
+def list_exam_questions(session_id: str, include_tests: bool = False) -> list:
+    conn = get_db()
+    rows = _fetchall(conn,
+        f"SELECT * FROM exam_questions WHERE session_id = {_ph()} ORDER BY position ASC",
+        (session_id,),
+    )
+    conn.close()
+    for row in rows:
+        row["examples"] = json.loads(row.pop("examples_json") or "[]")
+        if include_tests:
+            row["test_cases"] = json.loads(row.pop("test_cases_json") or "[]")
+        else:
+            row.pop("test_cases_json", None)
+    return rows
+
+
+def list_open_exams() -> list:
+    conn = get_db()
+    rows = _fetchall(conn,
+        """SELECT id, title, join_code, created_by, created_at FROM sessions s
+           WHERE status = 'open' AND EXISTS (
+             SELECT 1 FROM exam_questions q WHERE q.session_id = s.id
+           ) ORDER BY created_at DESC"""
+    )
+    for row in rows:
+        count = _fetchone(conn,
+            f"SELECT COUNT(*) AS count FROM session_members WHERE session_id = {_ph()} AND role != 'professor'", (row["id"],)
+        )
+        row["member_count"] = count["count"] if count else 0
+    conn.close()
+    return rows
+
+
+def get_exam_question(question_id: str, session_id: str) -> dict:
+    conn = get_db()
+    row = _fetchone(conn,
+        f"SELECT * FROM exam_questions WHERE id = {_ph()} AND session_id = {_ph()}",
+        (question_id, session_id),
+    )
+    conn.close()
+    if row:
+        row["examples"] = json.loads(row.pop("examples_json") or "[]")
+        row["test_cases"] = json.loads(row.pop("test_cases_json") or "[]")
+    return row
+
+
+def store_exam_submission(session_id: str, question_id: str, student_name: str,
+                          score: int, passed_tests: int, total_tests: int, status: str) -> dict:
+    submission_id = str(uuid.uuid4())
+    with _db_lock:
+        conn = get_db()
+        _execute(conn,
+            f"""INSERT INTO exam_submissions
+               (id, session_id, question_id, student_name, score, passed_tests, total_tests, status)
+               VALUES ({_ph(8)})""",
+            (submission_id, session_id, question_id, student_name, score, passed_tests, total_tests, status),
+        )
+        conn.commit()
+        conn.close()
+    return {"id": submission_id, "score": score, "passed_tests": passed_tests,
+            "total_tests": total_tests, "status": status}
+
+
+def get_exam_leaderboard(session_id: str) -> list:
+    conn = get_db()
+    rows = _fetchall(conn,
+        f"""SELECT sm.user_name,
+                  COALESCE(SUM(best.score), 0) AS score,
+                  COALESCE(SUM(q.max_score), 0) AS max_score,
+                  COUNT(DISTINCT q.id) AS questions_total,
+                  COUNT(DISTINCT CASE WHEN best.score = q.max_score THEN q.id END) AS questions_solved
+           FROM session_members sm
+           LEFT JOIN exam_questions q ON q.session_id = sm.session_id
+           LEFT JOIN (
+               SELECT session_id, question_id, student_name, MAX(score) AS score
+               FROM exam_submissions GROUP BY session_id, question_id, student_name
+           ) best ON best.session_id = sm.session_id AND best.question_id = q.id
+                AND best.student_name = sm.user_name
+           WHERE sm.session_id = {_ph()} AND sm.role != 'professor'
+           GROUP BY sm.user_name
+           ORDER BY score DESC, sm.user_name ASC""",
+        (session_id,),
+    )
+    conn.close()
+    for index, row in enumerate(rows, start=1):
+        row["rank"] = index
+    return rows
+
+
+def get_exam_question_breakdown(session_id: str) -> list:
+    """Best recorded score and test outcomes for each student/question pair."""
+    conn = get_db()
+    rows = _fetchall(conn,
+        f"""SELECT sub.student_name, q.id AS question_id, q.title AS question_title,
+                  q.max_score, sub.score, sub.passed_tests, sub.total_tests, sub.status
+           FROM exam_questions q
+           JOIN (
+               SELECT session_id, question_id, student_name, MAX(score) AS best_score
+               FROM exam_submissions GROUP BY session_id, question_id, student_name
+           ) best ON best.question_id = q.id AND best.session_id = q.session_id
+           JOIN exam_submissions sub ON sub.session_id = best.session_id
+                AND sub.question_id = best.question_id AND sub.student_name = best.student_name
+                AND sub.score = best.best_score
+           WHERE q.session_id = {_ph()}
+           ORDER BY sub.student_name, q.position""",
+        (session_id,),
+    )
+    conn.close()
+    return rows
+
+
+def get_student_exam_progress(student_name: str) -> dict:
+    conn = get_db()
+    exams = _fetchall(conn,
+        f"""SELECT s.id, s.title, s.status, s.created_by, s.created_at,
+                  COUNT(DISTINCT q.id) AS questions_total,
+                  COALESCE(SUM(best.score), 0) AS earned_score,
+                  COALESCE(SUM(q.max_score), 0) AS possible_score
+           FROM session_members sm
+           JOIN sessions s ON s.id = sm.session_id
+           LEFT JOIN exam_questions q ON q.session_id = s.id
+           LEFT JOIN (
+               SELECT session_id, question_id, student_name, MAX(score) AS score
+               FROM exam_submissions GROUP BY session_id, question_id, student_name
+           ) best ON best.session_id = s.id AND best.question_id = q.id
+                AND best.student_name = sm.user_name
+           WHERE sm.user_name = {_ph()}
+           GROUP BY s.id
+           ORDER BY s.created_at DESC""",
+        (student_name,),
+    )
+    submissions = _fetchall(conn,
+        f"""SELECT es.session_id, es.question_id, q.title AS question_title,
+                  MAX(es.score) AS score, MAX(es.passed_tests) AS passed_tests,
+                  MAX(es.total_tests) AS total_tests
+           FROM exam_submissions es
+           JOIN exam_questions q ON q.id = es.question_id
+           WHERE es.student_name = {_ph()}
+           GROUP BY es.session_id, es.question_id, q.title
+           ORDER BY es.session_id, q.position""",
+        (student_name,),
+    )
+    conn.close()
+    total_earned = sum(exam.get("earned_score", 0) or 0 for exam in exams)
+    total_possible = sum(exam.get("possible_score", 0) or 0 for exam in exams)
+    return {"exams": exams, "submissions": submissions,
+            "earned_score": total_earned, "possible_score": total_possible,
+            "overall_percentage": round(total_earned * 100 / total_possible, 1) if total_possible else None}
+
+
+def get_all_sessions(created_by: str = None) -> list:
+    """List professor-authored practical exams, optionally restricted to their owner."""
+    conn = get_db()
+    if created_by:
+        rows = _fetchall(conn,
+            f"""SELECT * FROM sessions s WHERE created_by = {_ph()}
+                AND EXISTS (SELECT 1 FROM exam_questions q WHERE q.session_id = s.id)
+                ORDER BY created_at DESC""",
+            (created_by,),
+        )
+    else:
+        rows = _fetchall(conn,
+            "SELECT * FROM sessions s WHERE EXISTS (SELECT 1 FROM exam_questions q WHERE q.session_id = s.id) ORDER BY created_at DESC"
+        )
     result = []
     for session in rows:
         members = _fetchall(conn,
-            f"SELECT user_name FROM session_members WHERE session_id = {_ph()}", (session["id"],)
+            f"SELECT user_name FROM session_members WHERE session_id = {_ph()} AND role != 'professor'", (session["id"],)
         )
         session["members"] = [m["user_name"] for m in members]
         session["member_count"] = len(session["members"])

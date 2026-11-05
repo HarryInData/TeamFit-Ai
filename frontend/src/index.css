@@ -7,45 +7,45 @@
 
 :root {
   /* ── Colors ── */
-  --color-bg: #0A0A14;
-  --color-bg-gradient: linear-gradient(135deg, #0A0A14 0%, #0F0F2D 50%, #0A0A14 100%);
-  --color-surface: #12122A;
-  --color-surface-alt: #1A1A35;
-  --color-surface-hover: #222245;
-  --color-surface-border: #2A2A50;
-  --color-card: #161630;
-  --color-card-hover: #1E1E40;
+  --color-bg: #f8fafc;
+  --color-bg-gradient: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f1f5f9;
+  --color-surface-hover: #eaf0f7;
+  --color-surface-border: #e2e8f0;
+  --color-card: #ffffff;
+  --color-card-hover: #f8fafc;
 
   /* Primary — Purple gradient */
-  --color-primary: #6C5CE7;
-  --color-primary-light: #A29BFE;
-  --color-primary-dark: #5A4BD1;
-  --color-gradient-btn: linear-gradient(135deg, #6C5CE7 0%, #A855F7 50%, #D946EF 100%);
-  --color-gradient-btn-hover: linear-gradient(135deg, #7C6CF7 0%, #B865FF 50%, #E956FF 100%);
+  --color-primary: #1d4ed8;
+  --color-primary-light: #1d4ed8;
+  --color-primary-dark: #1e40af;
+  --color-gradient-btn: #1d4ed8;
+  --color-gradient-btn-hover: #1e40af;
 
   /* Accents */
-  --color-success: #00D68F;
-  --color-success-bg: rgba(0, 214, 143, 0.1);
-  --color-warning: #FFB800;
-  --color-warning-bg: rgba(255, 184, 0, 0.1);
-  --color-danger: #FF4757;
-  --color-danger-bg: rgba(255, 71, 87, 0.1);
+  --color-success: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-warning: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-danger: #dc2626;
+  --color-danger-bg: #fef2f2;
   --color-info: #3B82F6;
   --color-info-bg: rgba(59, 130, 246, 0.1);
 
   /* Text */
-  --color-text: #E8E8F0;
-  --color-text-muted: #8888AA;
-  --color-text-dim: #555577;
-  --color-text-white: #FFFFFF;
-  --color-link: #A855F7;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-text-dim: #94a3b8;
+  --color-text-white: #0f172a;
+  --color-link: #1d4ed8;
 
   /* Borders */
-  --color-border: #2A2A50;
-  --color-border-light: #3A3A60;
-  --color-input-bg: #0D0D22;
-  --color-input-border: #2A2A50;
-  --color-input-focus: #6C5CE7;
+  --color-border: #e2e8f0;
+  --color-border-light: #cbd5e1;
+  --color-input-bg: #ffffff;
+  --color-input-border: #cbd5e1;
+  --color-input-focus: #1d4ed8;
 
   /* ── Typography ── */
   --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -90,9 +90,9 @@
   --radius-full: 9999px;
 
   /* ── Shadows ── */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.1);
   --shadow-glow-purple: 0 0 20px rgba(108, 92, 231, 0.3);
   --shadow-glow-success: 0 0 12px rgba(0, 214, 143, 0.3);
 

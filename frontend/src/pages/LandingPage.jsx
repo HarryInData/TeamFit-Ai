@@ -2,171 +2,29 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./LandingPage.css";
 
-class Particle {
-  constructor(getBounds) {
-    this.getBounds = getBounds;
-    this.reset();
-  }
-
-  reset() {
-    const { width, height } = this.getBounds();
-    this.x = Math.random() * width;
-    this.y = Math.random() * height;
-    this.vx = (Math.random() - 0.5) * 0.3;
-    this.vy = (Math.random() - 0.5) * 0.3;
-    this.r = Math.random() * 1.5 + 0.5;
-  }
-
-  update() {
-    const { width, height } = this.getBounds();
-    this.x += this.vx;
-    this.y += this.vy;
-    if (this.x < 0 || this.x > width) this.vx *= -1;
-    if (this.y < 0 || this.y > height) this.vy *= -1;
-  }
-}
-
 export default function LandingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const cursor = document.getElementById("cursor");
-    const ring = document.getElementById("cursor-ring");
-    let mx = 0,
-      my = 0,
-      rx = 0,
-      ry = 0;
-    document.addEventListener("mousemove", (e) => {
-      mx = e.clientX;
-      my = e.clientY;
-      cursor.style.left = mx + "px";
-      cursor.style.top = my + "px";
-    });
-    (function animRing() {
-      rx += (mx - rx) * 0.12;
-      ry += (my - ry) * 0.12;
-      ring.style.left = Math.round(rx) + "px";
-      ring.style.top = Math.round(ry) + "px";
-      requestAnimationFrame(animRing);
-    })();
-    document.querySelectorAll("button,.demo-card").forEach((el) => {
-      el.addEventListener("mouseenter", () => {
-        cursor.style.width = "18px";
-        cursor.style.height = "18px";
-        ring.style.width = "52px";
-        ring.style.height = "52px";
-      });
-      el.addEventListener("mouseleave", () => {
-        cursor.style.width = "10px";
-        cursor.style.height = "10px";
-        ring.style.width = "36px";
-        ring.style.height = "36px";
-      });
-    });
-
-    // Canvas particle/connection field
-    const canvas = document.getElementById("bg-canvas");
-    const ctx = canvas.getContext("2d");
-    let W,
-      H,
-      particles = [];
-    function resize() {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
+    const nodes = document.querySelectorAll(".landing-page .reveal");
+    if (!("IntersectionObserver" in window)) {
+      nodes.forEach((node) => node.classList.add("visible"));
+      return undefined;
     }
-    resize();
-    window.addEventListener("resize", resize);
-    const getBounds = () => ({ width: W, height: H });
-    for (let i = 0; i < 90; i++) particles.push(new Particle(getBounds));
-    const COLORS = [
-      "rgba(192,132,252,",
-      "rgba(244,114,182,",
-      "rgba(56,189,248,",
-    ];
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.update();
-        const col = COLORS[i % 3];
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = col + "0.5)";
-        ctx.fill();
-        for (let j = i + 1; j < particles.length; j++) {
-          const q = particles[j];
-          const dx = p.x - q.x;
-          const dy = p.y - q.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < 120) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = col + (0.18 * (1 - d / 120)).toFixed(2) + ")";
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
         }
-      }
-      requestAnimationFrame(draw);
-    }
-    draw();
-
-    // Animate bars after load
-    setTimeout(() => {
-      document.getElementById("bar1").style.width = "68%";
-      document.getElementById("pct1").textContent = "68%";
-      document.getElementById("bar2").style.width = "22%";
-      document.getElementById("pct2").textContent = "22%";
-      document.getElementById("bar3").style.width = "10%";
-      document.getElementById("pct3").textContent = "10%";
-    }, 600);
-    // Count-up metrics
-    function countUp(id, end, suffix, dur) {
-      const el = document.getElementById(id);
-      let s = 0;
-      const step = dur / 60;
-      const t = setInterval(() => {
-        if (s >= end) {
-          el.textContent = end + suffix;
-          clearInterval(t);
-        } else {
-          s += end / 60;
-          el.textContent = Math.round(s) + suffix;
-        }
-      }, step);
-    }
-    setTimeout(() => {
-      countUp("mks", 347, "", 1800);
-      countUp("mat", 24, "m", 1800);
-      setTimeout(() => {
-        document.getElementById("msc").textContent = "91";
-      }, 1900);
-    }, 800);
-
-    // Scroll reveal
-    const observer = new IntersectionObserver(
-      (entries) =>
-        entries.forEach((e) => {
-          if (e.isIntersecting) e.target.classList.add("visible");
-        }),
-      { threshold: 0.12 },
-    );
-    document.querySelectorAll(".reveal").forEach((el) => observer.observe(el));
-    setTimeout(
-      () =>
-        document
-          .querySelectorAll(".reveal")
-          .forEach((el) => el.classList.add("visible")),
-      100,
-    );
+      });
+    }, { threshold: 0.12 });
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
   }, []);
 
   return (
-    <>
-      <div id="cursor"></div>
-      <div id="cursor-ring"></div>
-      <canvas id="bg-canvas"></canvas>
+    <main className="landing-page">
 
       <nav>
         <div className="nav-logo">
@@ -194,16 +52,16 @@ export default function LandingPage() {
               <div className="badge-dot">
                 <div className="badge-pulse"></div>
               </div>
-              Beta — free for educators
+              Professor-led coding practicals
             </div>
             <h1>
-              Stop rewarding
+              Practical exams,
               <br />
-              <em className="h1-line2">free riders.</em>
+              <em className="h1-line2">clearly assessed.</em>
             </h1>
             <p className="hero-sub">
-              AI-powered contribution tracking for group coding assignments.
-              Know exactly who wrote what — automatically, silently, fairly.
+              Professors create coding exams with private test cases. Students
+              solve problems in a focused workspace and review their results.
             </p>
             <div className="hero-actions">
               <button
@@ -222,11 +80,11 @@ export default function LandingPage() {
                 >
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
-                See it live
+                Choose your role
               </button>
               <button
                 className="hero-btn-ghost"
-                onClick={() => alert("Demo video coming soon!")}
+                onClick={() => document.getElementById("how")?.scrollIntoView({ behavior: "smooth" })}
               >
                 <svg
                   width="15"
@@ -241,14 +99,14 @@ export default function LandingPage() {
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>
-                Watch 2-min demo
+                How it works
               </button>
             </div>
             <div className="hero-tags">
-              <span className="htag">FERPA-safe</span>
-              <span className="htag">No student install</span>
-              <span className="htag">Judge0 sandboxed</span>
-              <span className="htag">JWT auth</span>
+              <span className="htag">Student & professor roles</span>
+              <span className="htag">Private test cases</span>
+              <span className="htag">Isolated code runner</span>
+              <span className="htag">Progress reports</span>
             </div>
           </div>
 
@@ -296,7 +154,7 @@ export default function LandingPage() {
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              AI scoring...
+              Test-based grading
             </div>
             <div className="editor-card">
               <div className="editor-topbar">
@@ -312,15 +170,15 @@ export default function LandingPage() {
                   className="tbar-dot"
                   style={{ background: "#28c840" }}
                 ></div>
-                <div className="editor-tab">group_project.py</div>
+                <div className="editor-tab">solution.py · sample data</div>
                 <div className="live-badge">
-                  <div className="live-dot"></div>3 coding
+                  <div className="live-dot"></div>Sample workspace
                 </div>
               </div>
               <div className="code-body">
                 <div>
                   <span className="ln">1</span>
-                  <span className="cm"># TeamFit AI — Session 42</span>
+                  <span className="cm"># Sample exam workspace</span>
                 </div>
                 <div>
                   <span className="ln">2</span>
@@ -357,12 +215,12 @@ export default function LandingPage() {
                 </div>
               </div>
               <div className="contrib-panel">
-                <div className="cp-label">Live contribution</div>
+                <div className="cp-label">Sample data · question outcomes</div>
                 <div className="contrib-row">
                   <div
                     className="contrib-avatar"
                     style={{
-                      background: "rgba(192,132,252,.3)",
+                      background: "rgba(29,78,216,.3)",
                       color: "var(--accent1)",
                     }}
                   >
@@ -376,8 +234,8 @@ export default function LandingPage() {
                       className="contrib-bar"
                       id="bar1"
                       style={{
-                        width: "0%",
-                        background: "linear-gradient(to right,#9333ea,#c084fc)",
+                        width: "68%",
+                        background: "#1d4ed8",
                       }}
                     ></div>
                   </div>
@@ -386,14 +244,14 @@ export default function LandingPage() {
                     style={{ color: "var(--accent1)" }}
                     id="pct1"
                   >
-                    0%
+                    68%
                   </div>
                 </div>
                 <div className="contrib-row">
                   <div
                     className="contrib-avatar"
                     style={{
-                      background: "rgba(244,114,182,.25)",
+                      background: "rgba(5,150,105,.25)",
                       color: "var(--accent2)",
                     }}
                   >
@@ -407,8 +265,8 @@ export default function LandingPage() {
                       className="contrib-bar"
                       id="bar2"
                       style={{
-                        width: "0%",
-                        background: "linear-gradient(to right,#be185d,#f472b6)",
+                        width: "22%",
+                        background: "#059669",
                       }}
                     ></div>
                   </div>
@@ -417,14 +275,14 @@ export default function LandingPage() {
                     style={{ color: "var(--accent2)" }}
                     id="pct2"
                   >
-                    0%
+                    22%
                   </div>
                 </div>
                 <div className="contrib-row">
                   <div
                     className="contrib-avatar"
                     style={{
-                      background: "rgba(52,211,153,.2)",
+                      background: "rgba(5,150,105,.2)",
                       color: "var(--green)",
                     }}
                   >
@@ -438,8 +296,8 @@ export default function LandingPage() {
                       className="contrib-bar"
                       id="bar3"
                       style={{
-                        width: "0%",
-                        background: "linear-gradient(to right,#059669,#34d399)",
+                        width: "10%",
+                        background: "#64748b",
                       }}
                     ></div>
                   </div>
@@ -448,28 +306,28 @@ export default function LandingPage() {
                     style={{ color: "var(--green)" }}
                     id="pct3"
                   >
-                    0%
+                    10%
                   </div>
                 </div>
               </div>
               <div className="metrics-row">
                 <div className="metric-box">
                   <div className="metric-val" id="mks">
-                    0
+                    3
                   </div>
-                  <div className="metric-lbl">Keystrokes</div>
+                  <div className="metric-lbl">Sample questions</div>
                 </div>
                 <div className="metric-box">
                   <div className="metric-val" id="mat">
-                    0m
+                    24
                   </div>
-                  <div className="metric-lbl">Active time</div>
+                  <div className="metric-lbl">Example students</div>
                 </div>
                 <div className="metric-box">
                   <div className="metric-val" id="msc">
-                    —
+                    35
                   </div>
-                  <div className="metric-lbl">AI score</div>
+                  <div className="metric-lbl">Possible points</div>
                 </div>
               </div>
             </div>
@@ -482,14 +340,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(192,132,252,.1)" }}
+              style={{ background: "rgba(29,78,216,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#c084fc"
+                stroke="#1d4ed8"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -497,19 +355,19 @@ export default function LandingPage() {
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
             </div>
-            Real-time tracking
+            Open exam sessions
           </div>
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(244,114,182,.1)" }}
+              style={{ background: "rgba(5,150,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#f472b6"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -519,19 +377,19 @@ export default function LandingPage() {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
-            AI-powered scoring
+            Hidden test grading
           </div>
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(52,211,153,.1)" }}
+              style={{ background: "rgba(5,150,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#34d399"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -545,14 +403,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(56,189,248,.1)" }}
+              style={{ background: "rgba(71,85,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#38bdf8"
+                stroke="#475569"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -567,14 +425,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(251,191,36,.1)" }}
+              style={{ background: "rgba(217,119,6,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#fbbf24"
+                stroke="#d97706"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -587,14 +445,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(192,132,252,.1)" }}
+              style={{ background: "rgba(29,78,216,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#c084fc"
+                stroke="#1d4ed8"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -608,14 +466,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(244,114,182,.1)" }}
+              style={{ background: "rgba(5,150,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#f472b6"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -626,19 +484,19 @@ export default function LandingPage() {
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
             </div>
-            Fair team evaluation
+            Question-level marks
           </div>
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(52,211,153,.1)" }}
+              style={{ background: "rgba(5,150,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#34d399"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -648,20 +506,20 @@ export default function LandingPage() {
                 <line x1="6" y1="20" x2="6" y2="14" />
               </svg>
             </div>
-            FERPA-compliant
+            CSV result exports
           </div>
           {/* Duplicates for scrolling */}
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(192,132,252,.1)" }}
+              style={{ background: "rgba(29,78,216,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#c084fc"
+                stroke="#1d4ed8"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -669,19 +527,19 @@ export default function LandingPage() {
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
             </div>
-            Real-time tracking
+            Open exam sessions
           </div>
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(244,114,182,.1)" }}
+              style={{ background: "rgba(5,150,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#f472b6"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -691,19 +549,19 @@ export default function LandingPage() {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
-            AI-powered scoring
+            Hidden test grading
           </div>
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(52,211,153,.1)" }}
+              style={{ background: "rgba(5,150,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#34d399"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -717,14 +575,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(56,189,248,.1)" }}
+              style={{ background: "rgba(71,85,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#38bdf8"
+                stroke="#475569"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -739,14 +597,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(251,191,36,.1)" }}
+              style={{ background: "rgba(217,119,6,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#fbbf24"
+                stroke="#d97706"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -759,14 +617,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(192,132,252,.1)" }}
+              style={{ background: "rgba(29,78,216,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#c084fc"
+                stroke="#1d4ed8"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -780,14 +638,14 @@ export default function LandingPage() {
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(244,114,182,.1)" }}
+              style={{ background: "rgba(5,150,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#f472b6"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -798,19 +656,19 @@ export default function LandingPage() {
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
             </div>
-            Fair team evaluation
+            Question-level marks
           </div>
           <div className="trust-item">
             <div
               className="trust-icon"
-              style={{ background: "rgba(52,211,153,.1)" }}
+              style={{ background: "rgba(5,150,105,.1)" }}
             >
               <svg
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#34d399"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -820,7 +678,7 @@ export default function LandingPage() {
                 <line x1="6" y1="20" x2="6" y2="14" />
               </svg>
             </div>
-            FERPA-compliant
+            CSV result exports
           </div>
         </div>
       </div>
@@ -855,8 +713,8 @@ export default function LandingPage() {
             <div
               className="feat-icon"
               style={{
-                background: "rgba(192,132,252,.08)",
-                borderColor: "rgba(192,132,252,.15)",
+                background: "rgba(29,78,216,.08)",
+                borderColor: "rgba(29,78,216,.15)",
               }}
             >
               <svg
@@ -864,7 +722,7 @@ export default function LandingPage() {
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#c084fc"
+                stroke="#1d4ed8"
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -872,23 +730,23 @@ export default function LandingPage() {
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
               </svg>
             </div>
-            <div className="feat-title">Real-time contribution tracking</div>
+            <div className="feat-title">Professor-led exam sessions</div>
             <p className="feat-desc">
-              Silently captures keystrokes, active window focus, and coding time
-              per student — zero UI friction, maximum signal fidelity.
+              Professors create coding practicals, add questions and private
+              test cases, then publish a session for their students to join.
             </p>
             <div className="feat-tags">
-              <span className="ftag">keystrokes</span>
-              <span className="ftag">focus windows</span>
-              <span className="ftag">active time</span>
+              <span className="ftag">exam authoring</span>
+              <span className="ftag">join codes</span>
+              <span className="ftag">question sets</span>
             </div>
           </div>
           <div className="feat-card">
             <div
               className="feat-icon"
               style={{
-                background: "rgba(244,114,182,.08)",
-                borderColor: "rgba(244,114,182,.15)",
+                background: "rgba(5,150,105,.08)",
+                borderColor: "rgba(5,150,105,.15)",
               }}
             >
               <svg
@@ -896,7 +754,7 @@ export default function LandingPage() {
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#f472b6"
+                stroke="#059669"
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -906,23 +764,22 @@ export default function LandingPage() {
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
-            <div className="feat-title">AI-generated fair scores</div>
+            <div className="feat-title">Test-based grading</div>
             <p className="feat-desc">
-              Raw metrics transformed into readable 0–100 contribution scores
-              with qualitative AI summaries for each student — ready to paste
-              into a grade sheet.
+              Student submissions run against professor-authored tests. Marks
+              reflect the test cases passed and the point value of each question.
             </p>
             <div className="feat-tags">
-              <span className="ftag">0–100 score</span>
-              <span className="ftag">AI narrative</span>
+              <span className="ftag">private tests</span>
+              <span className="ftag">question points</span>
             </div>
           </div>
           <div className="feat-card">
             <div
               className="feat-icon"
               style={{
-                background: "rgba(52,211,153,.08)",
-                borderColor: "rgba(52,211,153,.15)",
+                background: "rgba(5,150,105,.08)",
+                borderColor: "rgba(5,150,105,.15)",
               }}
             >
               <svg
@@ -930,7 +787,7 @@ export default function LandingPage() {
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#34d399"
+                stroke="#059669"
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -939,23 +796,22 @@ export default function LandingPage() {
                 <polyline points="8 6 2 12 8 18" />
               </svg>
             </div>
-            <div className="feat-title">Monaco live collaboration</div>
+            <div className="feat-title">Focused coding workspace</div>
             <p className="feat-desc">
-              Teams code together in a VS Code-grade Monaco editor, synchronized
-              in real time. No lag, no merge conflicts, no one sitting idle
-              undetected.
+              Students read the problem, write code in the Monaco editor, run
+              public examples, submit solutions, and review their results.
             </p>
             <div className="feat-tags">
-              <span className="ftag">real-time sync</span>
-              <span className="ftag">Python · JS · Java</span>
+              <span className="ftag">live editor</span>
+              <span className="ftag">Python · JavaScript · Java</span>
             </div>
           </div>
           <div className="feat-card">
             <div
               className="feat-icon"
               style={{
-                background: "rgba(56,189,248,.08)",
-                borderColor: "rgba(56,189,248,.15)",
+                background: "rgba(71,85,105,.08)",
+                borderColor: "rgba(71,85,105,.15)",
               }}
             >
               <svg
@@ -963,7 +819,7 @@ export default function LandingPage() {
                 height="20"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#38bdf8"
+                stroke="#475569"
                 strokeWidth="1.8"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -975,9 +831,8 @@ export default function LandingPage() {
             </div>
             <div className="feat-title">Professor analytics dashboard</div>
             <p className="feat-desc">
-              A single dashboard with every student's effort score, activity
-              timeline, and AI narrative. Filter, compare, and export — from
-              session end to grade in under 2 minutes.
+              Review participation, submitted marks, ranked results, and
+              question-level outcomes. Download a CSV report for your records.
             </p>
             <div className="feat-tags">
               <span className="ftag">per-student view</span>
@@ -1004,20 +859,19 @@ export default function LandingPage() {
           </div>
           <div className="step">
             <div className="step-num">02</div>
-            <div className="step-title">Code together, tracked silently</div>
+            <div className="step-title">Solve in the exam workspace</div>
             <p className="step-desc">
-              Teams write and run code in the Monaco editor. TeamFit AI logs
-              contributions in the background — students see nothing different.
+              Students read each prompt, run public examples in the editor, and
+              submit when they are ready for grading.
             </p>
             <div className="step-connector"></div>
           </div>
           <div className="step">
             <div className="step-num">03</div>
-            <div className="step-title">Professor gets the report</div>
+            <div className="step-title">Review marks and outcomes</div>
             <p className="step-desc">
-              Session ends → AI synthesizes data → professor receives a
-              per-student score, summary, and full activity breakdown. Grade
-              with confidence.
+              Professors review scores from the private test suite, inspect
+              question outcomes, and export the session results as CSV.
             </p>
           </div>
         </div>
@@ -1045,24 +899,26 @@ export default function LandingPage() {
             </span>
           </h2>
           <p className="cta-sub">
-            Try both demo accounts. No sign-up. See exactly what students and
-            professors experience.
+            Choose your account type to sign in or create an account. Students
+            and professors each get a workspace tailored to their role.
           </p>
           <div className="demo-cards">
-            <div
+            <button
+              type="button"
               className="demo-card"
+              aria-label="Continue as a student"
               onClick={() => navigate("/login?role=student")}
             >
               <div
                 className="demo-card-icon"
-                style={{ background: "rgba(192,132,252,.12)" }}
+                style={{ background: "rgba(29,78,216,.12)" }}
               >
                 <svg
                   width="18"
                   height="18"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#c084fc"
+                  stroke="#1d4ed8"
                   strokeWidth="1.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -1072,7 +928,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <div>
-                <div className="demo-card-label">Try as a</div>
+                <div className="demo-card-label">Continue as a</div>
                 <div className="demo-card-title">Student</div>
               </div>
               <svg
@@ -1080,7 +936,7 @@ export default function LandingPage() {
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#c084fc"
+                stroke="#1d4ed8"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -1089,21 +945,23 @@ export default function LandingPage() {
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <polyline points="12 5 19 12 12 19" />
               </svg>
-            </div>
-            <div
+            </button>
+            <button
+              type="button"
               className="demo-card"
+              aria-label="Continue as a professor"
               onClick={() => navigate("/login?role=professor")}
             >
               <div
                 className="demo-card-icon"
-                style={{ background: "rgba(244,114,182,.12)" }}
+                style={{ background: "rgba(5,150,105,.12)" }}
               >
                 <svg
                   width="18"
                   height="18"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="#f472b6"
+                  stroke="#059669"
                   strokeWidth="1.8"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -1114,7 +972,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <div>
-                <div className="demo-card-label">Try as a</div>
+                <div className="demo-card-label">Continue as a</div>
                 <div className="demo-card-title">Professor</div>
               </div>
               <svg
@@ -1122,7 +980,7 @@ export default function LandingPage() {
                 height="14"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#f472b6"
+                stroke="#059669"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -1131,7 +989,7 @@ export default function LandingPage() {
                 <line x1="5" y1="12" x2="19" y2="12" />
                 <polyline points="12 5 19 12 12 19" />
               </svg>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -1141,8 +999,8 @@ export default function LandingPage() {
           Team<em>Fit</em> AI
         </div>
         <div className="footer-text">React · Flask · Monaco · Judge0</div>
-        <div className="footer-text">© 2025 TeamFit AI</div>
+        <div className="footer-text">© 2026 TeamFit</div>
       </footer>
-    </>
+    </main>
   );
 }

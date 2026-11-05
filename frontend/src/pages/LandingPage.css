@@ -4,27 +4,27 @@
   box-sizing: border-box;
 }
 :root {
-  --ink: #0b0c14;
-  --ink2: #111220;
-  --surface: rgba(255, 255, 255, 0.04);
-  --border: rgba(255, 255, 255, 0.07);
-  --border2: rgba(255, 255, 255, 0.12);
-  --text: #f0eeff;
-  --muted: #7a7a9a;
-  --accent1: #c084fc;
-  --accent2: #f472b6;
-  --accent3: #38bdf8;
-  --green: #34d399;
+  --ink: #f8fafc;
+  --ink2: #f1f5f9;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --border2: #cbd5e1;
+  --text: #131b2e;
+  --muted: #64748b;
+  --accent1: #1d4ed8;
+  --accent2: #059669;
+  --accent3: #475569;
+  --green: #059669;
 }
 html {
   scroll-behavior: smooth;
 }
-body {
+.landing-page {
   background: var(--ink);
   color: var(--text);
-  font-family: "DM Sans", sans-serif;
+  font-family: Inter, "DM Sans", sans-serif;
   overflow-x: hidden;
-  cursor: none;
+  cursor: auto;
 }
 
 /* Custom cursor */
@@ -71,7 +71,7 @@ body {
 }
 
 /* Nav */
-nav {
+.landing-page nav {
   position: fixed;
   top: 0;
   left: 0;
@@ -82,8 +82,9 @@ nav {
   justify-content: space-between;
   padding: 18px 40px;
   border-bottom: 1px solid var(--border);
-  background: rgba(11, 12, 20, 0.7);
-  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom-color: var(--border);
+  backdrop-filter: blur(8px);
 }
 .nav-logo {
   font-family: "Syne", sans-serif;
@@ -122,7 +123,7 @@ nav {
   border-radius: 8px;
   font-family: "DM Sans", sans-serif;
   font-size: 13px;
-  cursor: none;
+  cursor: pointer;
   transition: all 0.2s;
 }
 .btn-outline:hover {
@@ -132,13 +133,13 @@ nav {
 .btn-glow {
   background: var(--accent1);
   border: none;
-  color: #0b0c14;
+  color: #ffffff;
   padding: 8px 20px;
   border-radius: 8px;
   font-family: "DM Sans", sans-serif;
   font-size: 13px;
   font-weight: 600;
-  cursor: none;
+  cursor: pointer;
   transition: all 0.2s;
   position: relative;
   overflow: hidden;
@@ -802,7 +803,7 @@ h1 {
 }
 
 /* Footer */
-footer {
+.landing-page footer {
   position: relative;
   z-index: 1;
   padding: 28px 40px;
@@ -840,3 +841,48 @@ footer {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* Stitch academic theme: retain the original landing-page structure while
+   using the same calm surfaces, typography, borders, and cobalt actions. */
+.landing-page{background:#f8fafc;color:#131b2e;font-family:Inter,Arial,sans-serif}
+.landing-page nav{padding:14px clamp(18px,4vw,48px);border-color:#dfe4ef;background:rgba(255,255,255,.97)}
+.landing-page .nav-logo,.landing-page .footer-logo,.landing-page .section-heading,.landing-page .feat-title,.landing-page .step-title,.landing-page .cta-heading{font-family:Inter,Arial,sans-serif;color:#131b2e}
+.landing-page .nav-logo em,.landing-page .footer-logo em{color:#1d4ed8}
+.landing-page .nav-links a{color:#475569}
+.landing-page .nav-links a:hover{color:#1d4ed8}
+.landing-page .btn-outline,.landing-page .hero-btn-ghost{border:1px solid #cbd5e1;border-radius:4px;background:#fff;color:#1e293b;cursor:pointer}
+.landing-page .btn-outline:hover,.landing-page .hero-btn-ghost:hover{border-color:#1d4ed8;color:#1d4ed8;background:#f8fafc}
+.landing-page .btn-glow,.landing-page .hero-btn-main{border:1px solid #1d4ed8;border-radius:4px;background:#1d4ed8;color:#fff;box-shadow:none;cursor:pointer}
+.landing-page .btn-glow:hover,.landing-page .hero-btn-main:hover{background:#1e40af;box-shadow:none}
+.landing-page .btn-glow:after,.landing-page .hero-btn-main:before{display:none}
+.landing-page .hero{background:#f8fafc}
+.landing-page .hero-badge{border-color:#bfdbfe;border-radius:4px;background:#eff6ff;color:#1e40af}
+.landing-page .hero-sub,.landing-page .section-heading+p,.landing-page .feat-desc,.landing-page .step-desc,.landing-page .cta-sub{color:#475569}
+.landing-page .h1-line2{color:#1d4ed8}
+.landing-page .htag,.landing-page .ftag{border:1px solid #dfe4ef;border-radius:4px;background:#f8fafc;color:#475569}
+.landing-page .editor-card,.landing-page .feat-card,.landing-page .demo-card{border:1px solid #dfe4ef;border-radius:6px;background:#fff;box-shadow:none}
+.landing-page .editor-topbar,.landing-page .contrib-panel,.landing-page .metrics-row{background:#f8fafc;border-color:#e2e8f0}
+.landing-page .editor-tab{color:#475569}
+.landing-page .code-body{background:#fff;color:#334155}
+.landing-page .ln{color:#94a3b8}
+.landing-page .cm{color:#64748b}
+.landing-page .kw{color:#1d4ed8}
+.landing-page .fn{color:#047857}
+.landing-page .str{color:#b45309}
+.landing-page .live-badge{background:#ecfdf5;color:#047857}
+.landing-page .live-dot{background:#059669}
+.landing-page .cp-label,.landing-page .metric-lbl,.landing-page .contrib-name,.landing-page .demo-card-label{color:#64748b}
+.landing-page .contrib-pct,.landing-page .metric-val,.landing-page .demo-card-title{color:#131b2e}
+.landing-page .trust{border-color:#dfe4ef;background:#fff}
+.landing-page .trust-item{color:#475569}
+.landing-page .features,.landing-page .how,.landing-page .cta-section{background:#f8fafc}
+.landing-page .feat-card:hover,.landing-page .demo-card:hover{transform:translateY(-1px);border-color:#94a3b8;background:#fff;box-shadow:none}
+.landing-page .feat-card:before,.landing-page .cta-glow{display:none}
+.landing-page .feat-icon,.landing-page .demo-card-icon{border-radius:4px}
+.landing-page .step-num{border:1px solid #bfdbfe;border-radius:4px;background:#eff6ff;color:#1d4ed8}
+.landing-page .step-connector{background:#cbd5e1}
+.landing-page .cta-heading span{background:none!important;-webkit-text-fill-color:#1d4ed8!important;color:#1d4ed8}
+.landing-page footer{border-color:#dfe4ef;background:#fff;color:#475569}
+.landing-page .footer-text{color:#64748b}
+.landing-page .demo-card{cursor:pointer}
+@media(max-width:700px){.landing-page nav{position:sticky;top:0}.landing-page .nav-links{display:none}.landing-page .hero{padding-top:90px}}

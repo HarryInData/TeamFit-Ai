@@ -18,10 +18,23 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+const hasFirebaseConfig = Object.values(firebaseConfig).every(
+  (value) => typeof value === 'string' && value.trim().length > 0,
+);
 
-export const auth = getAuth(app);
+let auth = null;
+let googleProvider = null;
 
-export const googleProvider = new GoogleAuthProvider();
-// Always prompt user to select an account (don't auto-pick)
-googleProvider.setCustomParameters({ prompt: "select_account" });
+if (hasFirebaseConfig) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+    // Always prompt user to select an account (don't auto-pick)
+    googleProvider.setCustomParameters({ prompt: 'select_account' });
+  } catch (error) {
+    console.error('Firebase Auth is unavailable; email/password sign-in remains enabled.', error);
+  }
+}
+
+export { auth, googleProvider };
