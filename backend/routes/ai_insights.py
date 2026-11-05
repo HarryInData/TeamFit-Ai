@@ -7,10 +7,35 @@ GET  /api/ai-insights — uses live DB data
 from flask import Blueprint, request, jsonify
 from models.database import get_all_students
 from services.ai_engine import execute_ai_analysis
+from services.question_generator import generate_question_draft
 from config import Config
 from middleware.auth import roles_required
 
 ai_insights_bp = Blueprint("ai_insights", __name__)
+
+
+@ai_insights_bp.route("/ai/generate-question", methods=["POST"])
+@roles_required("professor")
+def generate_question():
+    """Generate a reviewable coding-question draft from a short professor prompt."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+
+    description = data.get("description")
+    difficulty = data.get("difficulty", "intermediate")
+    if not isinstance(description, str) or not description.strip() or len(description.strip()) > 2000:
+        return jsonify({"error": "Describe the question idea in 1–2,000 characters"}), 400
+    if not isinstance(difficulty, str) or difficulty not in {"beginner", "intermediate", "advanced"}:
+        return jsonify({"error": "Difficulty must be beginner, intermediate, or advanced"}), 400
+
+    try:
+        question = generate_question_draft(description.strip(), difficulty)
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 503
+    except Exception:
+        return jsonify({"error": "AI could not generate a valid question. Please try again."}), 502
+    return jsonify({"question": question})
 
 
 @ai_insights_bp.route("/ai-insights", methods=["POST"])
