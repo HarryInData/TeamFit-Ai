@@ -31,20 +31,21 @@ fi
 # Install backend deps if needed
 echo "📦 Setting up backend..."
 cd backend
-if [ ! -d "venv" ]; then
-    python3 -m venv venv
+if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
 fi
-source venv/bin/activate
+source .venv/bin/activate
 pip install -q -r requirements.txt
 
 # Copy env if not exists
 if [ ! -f ".env" ]; then
     cp .env.example .env 2>/dev/null || true
-    echo "⚠️  Created backend/.env — configure Render Sandbox credentials before running code"
+    echo "⚠️  Created backend/.env — start local Piston per backend/PISTON.md before running code"
 fi
 
 # Start Flask
-echo "📡 Starting backend on http://localhost:5000"
+export FLASK_PORT="${FLASK_PORT:-5001}"
+echo "📡 Starting backend on http://localhost:${FLASK_PORT}"
 python app.py &
 BACKEND_PID=$!
 cd ..
@@ -67,8 +68,8 @@ echo "════════════════════════�
 echo "  ✅ TeamFit AI is running!"
 echo ""
 echo "  🖥️  Frontend:  http://localhost:5173"
-echo "  📡 Backend:   http://localhost:5000"
-echo "  ❤️  Health:    http://localhost:5000/api/health"
+echo "  📡 Backend:   http://localhost:${FLASK_PORT}"
+echo "  ❤️  Health:    http://localhost:${FLASK_PORT}/api/health"
 echo ""
 echo "  Demo Accounts:"
 echo "  Student:    student@teamfit.ai / demo123"

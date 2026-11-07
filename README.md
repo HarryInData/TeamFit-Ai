@@ -15,6 +15,11 @@ This starts both the Flask backend (`:5001`) and React frontend (`:5173`).
 Create `backend/.env` from `backend/.env.example` first. Code execution requires
 a reachable Piston server. For local development, start the included
 self-hosted Piston stack as described in [backend/PISTON.md](backend/PISTON.md).
+Local email/password demo accounts work without Firebase. To enable Google
+sign-in locally, fill the Firebase values in `frontend/.env.local` and set
+`FIREBASE_PROJECT_ID` and `FIREBASE_WEB_API_KEY` in `backend/.env`; blank
+examples intentionally keep Google sign-in disabled until real project values
+are provided.
 
 ## Development Demo Accounts
 
