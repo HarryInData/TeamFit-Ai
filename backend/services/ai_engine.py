@@ -12,6 +12,7 @@ import traceback
 from typing import Any
 
 import pandas as pd
+from config import Config
 
 # ── Groq client (optional — graceful fallback) ──
 try:
@@ -128,7 +129,7 @@ def call_groq_llm(prompt: str, api_key: str) -> dict:
     client = Groq(api_key=api_key)
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=Config.GROQ_MODEL,
         messages=[
             {
                 "role": "system",

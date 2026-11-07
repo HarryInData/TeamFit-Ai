@@ -54,8 +54,10 @@ PISTON_AUTH_TOKEN=<long-random-secret>
 ```
 
 The gateway must require that header and the same secret before forwarding to
-Piston. Production startup rejects HTTP runner URLs and missing gateway
-authentication. An authenticated tunnel can connect a personal machine, but
+Piston. When a production runner URL is configured, startup requires HTTPS and
+gateway authentication; if no URL is configured, the rest of TeamFit starts
+normally and code-execution requests fail closed with a configuration error.
+An authenticated tunnel can connect a personal machine, but
 that machine must stay online and has limited capacity; a small dedicated
 Linux host is more reliable for live exams.
 

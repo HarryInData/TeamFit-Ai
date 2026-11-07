@@ -41,7 +41,7 @@ Return a JSON object with exactly these keys and types:
 Do not include markdown or additional keys."""
 
     response = Groq(api_key=Config.GROQ_API_KEY).chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=Config.GROQ_MODEL,
         messages=[
             {"role": "system", "content": "You write precise, fair coding assessment questions. Return valid JSON only."},
             {"role": "user", "content": prompt},
