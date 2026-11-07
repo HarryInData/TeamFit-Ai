@@ -17,13 +17,13 @@ class PistonSandboxTests(unittest.TestCase):
         Config.PISTON_URL, Config.PISTON_AUTH_HEADER, Config.PISTON_AUTH_TOKEN = self.original
 
     @patch("services.judge0.requests.post")
-    def test_compilation_error_is_reported_as_compile_error(self, post):
+    def test_compilation_error_is_classified_when_diagnostic_matches(self, post):
         Config.PISTON_URL = "http://piston.test"
         post.return_value = Mock(status_code=200, json=lambda: {
             "compile": {"code": 1, "stderr": "main.c:1: error: expected expression"},
         })
         result = execute_code("int main( {", 50)
-        self.assertEqual(result["error_type"], "compile")
+        self.assertEqual(result["error_type"], "syntax")
         self.assertIn("expected expression", result["stderr"])
 
     @patch("services.judge0.requests.post")
