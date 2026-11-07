@@ -303,6 +303,7 @@ def run_question(session_id, question_id):
             "passed": is_passed,
             "status": result.get("status"),
             "error_type": result.get("error_type"),
+            "error_summary": result.get("error_summary"),
             "stdout": result.get("stdout", "")[:4096],
             "stderr": result.get("stderr", "")[:4096],
             "time": result.get("time", "0"),

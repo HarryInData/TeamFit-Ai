@@ -37,12 +37,13 @@ function getExecutionErrors(result) {
   const failedCases = (result?.test_results || []).filter((test) => !test.passed);
   const details = failedCases.map((test) => {
     const kind = test.error_type || test.status || 'Failed';
-    const message = test.stderr || (test.status === 'Wrong Answer'
+    const message = [test.error_summary, test.stderr].filter(Boolean).join('\n\n') || (test.status === 'Wrong Answer'
       ? 'The program ran, but its output did not match the expected output.'
       : 'The test case failed without additional error details.');
     return `[Test case ${test.case} · ${kind}]\n${message}`;
   });
   if (result?.stderr && !details.length) details.push(result.stderr);
+  if (result?.error_summary && !details.length) details.push(result.error_summary);
   if (result?.error) details.push(result.error);
   return details.join('\n\n') || 'No errors were reported for the visible test cases.';
 }

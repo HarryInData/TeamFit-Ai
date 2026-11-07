@@ -186,6 +186,7 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(run.json["total_tests"], 1)
         self.assertEqual(run.json["test_results"], [{
             "case": 1, "passed": True, "status": "Accepted", "error_type": None,
+            "error_summary": None,
             "stdout": "5\n", "stderr": "", "time": "0.1", "memory": "1", "truncated": False,
         }])
         self.assertEqual(run.json["leaderboard"][0]["score"], 0)
