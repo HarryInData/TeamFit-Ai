@@ -5,6 +5,7 @@ never execute student-controlled source code with their own operating-system
 privileges.
 """
 
+import re
 import requests
 from config import Config
 
@@ -111,13 +112,16 @@ def execute_code(source_code: str, language_id: int = 71, stdin: str = "",
     elif status == "Time Limit Exceeded" and not stderr:
         stderr = "The program exceeded the execution time limit."
 
+    error_type, error_summary = _error_details(status, stderr)
     return {
         "stdout": stdout[:MAX_STDOUT_BYTES],
         "stderr": stderr[:MAX_STDERR_BYTES],
         "status": status,
+        "language": language,
         "time": str((run_result.get("cpu_time") or 0) / 1000),
         "memory": str(round((run_result.get("memory") or 0) / 1024)),
-        "error_type": _error_type(status, stderr),
+        "error_type": error_type,
+        "error_summary": error_summary,
         "truncated": len(stdout) > MAX_STDOUT_BYTES or len(stderr) > MAX_STDERR_BYTES,
     }
 
@@ -134,29 +138,99 @@ def execute_code_cases(source_code: str, language_id: int,
         result = execute_code(source_code, language_id, stdin, expected_output)
         if result["status"] == "Accepted" and result["stdout"].strip() != expected_output.strip():
             result["status"] = "Wrong Answer"
-            result["error_type"] = "wrong_answer"
+            result["error_type"], result["error_summary"] = _error_details("Wrong Answer")
         results.append(result)
     return results
 
 
+_ERROR_PATTERNS = (
+    ("syntax", (
+        r"syntaxerror", r"indentationerror", r"invalid syntax", r"syntax error",
+        r"unexpected token", r"unexpected identifier", r"unexpected end of file",
+        r"expected (?:expression|primary-expression|';'|token)", r"expected ';'", r"['\"]?;['\"]? expected",
+        r"illegal start of (?:expression|type)", r"reached end of file while parsing", r"unclosed (?:parenthesis|bracket|brace)",
+        r"no viable alternative", r"missing ['\"].*?['\"] at",
+    )),
+    ("name", (
+        r"nameerror", r"referenceerror", r"cannot find symbol", r"undeclared identifier",
+        r"was not declared in this scope", r"not defined", r"no member named",
+    )),
+    ("type", (
+        r"typeerror", r"incompatible types", r"type mismatch", r"cannot be converted to",
+        r"no suitable method", r"no matching function",
+    )),
+    ("link", (r"undefined reference", r"undefined symbol", r"multiple definition", r"linker command failed")),
+    ("index", (r"indexerror", r"index out of bounds", r"arrayindexoutofboundsexception", r"out of range")),
+    ("key", (r"keyerror",)),
+    ("value", (r"valueerror", r"numberformatexception", r"invalid literal for", r"format specifier")),
+    ("null_reference", (r"nullpointerexception", r"cannot read (?:properties|property) of null", r"undefined is not an object")),
+    ("division_by_zero", (r"zerodivisionerror", r"division by zero", r"arithmeticexception")),
+    ("memory", (r"outofmemoryerror", r"memoryerror", r"std::bad_alloc", r"cannot allocate memory", r"memory limit exceeded")),
+    ("memory_access", (r"segmentation fault", r"sigsegv", r"access violation", r"bus error")),
+    ("arithmetic", (r"floating point exception", r"arithmetic overflow", r"overflowerror")),
+    ("assertion", (r"assertionerror", r"assertion failed", r"assertion .* failed")),
+)
+
+_ERROR_SUMMARIES = {
+    "syntax": "The code has a syntax or parsing error. Check the indicated line and nearby punctuation.",
+    "name": "A variable, function, or symbol could not be found. Check its name and scope.",
+    "type": "The code uses an incompatible value or function type. Check the types in the diagnostic.",
+    "link": "Compilation reached the linker, but a required symbol or definition is missing or duplicated.",
+    "index": "The code accessed an index outside the available sequence or array bounds.",
+    "key": "The code requested a key that is not present in the map or dictionary.",
+    "value": "A value could not be parsed or used in the requested format.",
+    "null_reference": "The code tried to access a member through a null or undefined value.",
+    "division_by_zero": "The code attempted to divide by zero.",
+    "memory": "The program exceeded its available memory.",
+    "memory_access": "The program accessed invalid memory. Check pointer and array bounds.",
+    "arithmetic": "The program encountered an invalid arithmetic operation or overflow.",
+    "assertion": "An assertion failed while the program was running.",
+    "compile": "The compiler rejected the program. See the compiler diagnostic for details.",
+    "runtime": "The program stopped with a runtime error. See the diagnostic for details.",
+    "timeout": "The program exceeded the execution time limit.",
+    "output_limit": "The program produced more output than the sandbox allows.",
+    "wrong_answer": "The program ran, but its output did not match the expected output.",
+    "internal": "The isolated execution service encountered an internal error.",
+}
+
+
+def _error_details(status: str, stderr: str = "") -> tuple[str | None, str | None]:
+    """Classify common diagnostics across Python, JS, C/C++, and Java.
+
+    The sandbox/compiler remains authoritative for execution. These labels are
+    explanatory hints derived from its status and diagnostic text.
+    """
+    normalized = (status or "").lower()
+    error_text = (stderr or "").lower()
+    if normalized == "accepted":
+        return None, None
+    if "wrong answer" in normalized:
+        error_type = "wrong_answer"
+    elif "time limit" in normalized or normalized == "timeout":
+        error_type = "timeout"
+    elif "output limit" in normalized:
+        error_type = "output_limit"
+    elif "memory limit" in normalized:
+        error_type = "memory"
+    elif "internal error" in normalized:
+        error_type = "internal"
+    else:
+        error_type = next((kind for kind, patterns in _ERROR_PATTERNS
+                           if any(re.search(pattern, error_text) for pattern in patterns)), None)
+        if error_type is None:
+            if "compilation" in normalized:
+                error_type = "compile"
+            elif "runtime" in normalized:
+                error_type = "runtime"
+            else:
+                error_type = "execution" if normalized not in ("", "unknown") else "unknown"
+
+    summary = _ERROR_SUMMARIES.get(error_type)
+    if error_type in {"compile", "execution", "unknown"} and not summary:
+        summary = "Execution did not complete successfully. See the diagnostic output for details."
+    return error_type, summary
+
+
 def _error_type(status: str, stderr: str = "") -> str | None:
-    normalized = status.lower()
-    error_text = stderr.lower()
-    if any(marker in error_text for marker in ("syntaxerror", "indentationerror", "invalid syntax")):
-        return "syntax"
-    if "compilation" in normalized:
-        return "compile"
-    if "runtime" in normalized:
-        for error_name in ("nameerror", "typeerror", "valueerror", "indexerror", "keyerror", "zerodivisionerror"):
-            if error_name in error_text:
-                return error_name.removesuffix("error")
-        return "runtime"
-    if "time limit" in normalized:
-        return "timeout"
-    if "output limit" in normalized:
-        return "output_limit"
-    if "memory limit" in normalized:
-        return "memory"
-    if status == "Accepted":
-        return None
-    return "execution" if status != "Unknown" else "unknown"
+    """Backwards-compatible alias used by existing callers."""
+    return _error_details(status, stderr)[0]

@@ -303,13 +303,26 @@ def run_question(session_id, question_id):
             "passed": is_passed,
             "status": result.get("status"),
             "error_type": result.get("error_type"),
+            "error_summary": result.get("error_summary"),
+            "stdout": result.get("stdout", "")[:4096],
             "stderr": result.get("stderr", "")[:4096],
+            "time": result.get("time", "0"),
+            "memory": result.get("memory", "0"),
+            "truncated": bool(result.get("truncated")),
         })
 
     total = len(tests)
     score = round(question["max_score"] * passed / total) if total and submit else None
     overall_status = "Accepted" if passed == total else "Partial" if passed else "Failed"
     visible_results = [result for result, case in zip(results, tests) if not case.get("hidden", True)]
+    visible_output = "\n".join(
+        f"[Test case {result['case']}]\n{result['stdout']}"
+        for result in visible_results if result.get("stdout")
+    )
+    visible_errors = "\n\n".join(
+        f"[Test case {result['case']} · {result.get('error_type') or result.get('status')}]\n{result['stderr']}"
+        for result in visible_results if result.get("stderr")
+    )
     if submit:
         store_exam_submission(session_id, question_id, student_name, score, passed, total, overall_status)
     return jsonify({
@@ -319,6 +332,10 @@ def run_question(session_id, question_id):
         "passed_tests": passed,
         "total_tests": total,
         "submitted": submit,
+        # Return execution details only for public tests. Hidden test output,
+        # inputs, and expected answers must never be sent to the student.
+        "stdout": visible_output[:32_768],
+        "stderr": visible_errors[:32_768],
         # Show details only for public samples; hidden-case outcomes are reflected
         # in the aggregate score without exposing a per-case oracle.
         "test_results": visible_results,
