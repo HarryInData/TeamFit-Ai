@@ -10,7 +10,7 @@ import jwt
 import requests
 from flask import Blueprint, request, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
-from models.database import get_user_by_email, get_user_by_name, create_user, update_user_password
+from models.database import get_user_by_email, get_user_by_name, create_user, create_or_get_user, update_user_password
 from middleware.auth import create_token
 from config import Config
 
@@ -203,7 +203,12 @@ def google_auth():
         # Google sign-in verifies the email with Firebase. Allow first-time
         # professor sign-in to provision the requested role; the role still
         # comes from this explicit auth flow, never from an untrusted token claim.
-        user = create_user(str(uuid.uuid4()), name, email, "!firebase", role)
+        user = create_or_get_user(str(uuid.uuid4()), name, email, "!firebase", role)
+
+    # Another first-time Google request may have created the account between
+    # the lookup above and our atomic insert. Preserve the selected role check.
+    if user["role"] != role:
+        return jsonify({"error": f"Account is not registered as {role}"}), 403
 
     token = create_token(user)
 
