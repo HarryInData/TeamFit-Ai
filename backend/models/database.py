@@ -27,6 +27,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 # Detect database engine
 _use_postgres = DATABASE_URL.startswith("postgres")
 _db_lock = threading.Lock()
+_SQLITE_TIMEOUT_SECONDS = 30
 
 # SQLite path (fallback)
 _SQLITE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "teamfit.db")
@@ -58,12 +59,16 @@ def get_db():
             # In development only, allow local SQLite as a convenience.
     # SQLite fallback
     import sqlite3
-    conn = sqlite3.connect(_SQLITE_PATH, check_same_thread=False)
+    # Render currently runs the free backend on SQLite. Give concurrent
+    # requests time to acquire SQLite's single-writer lock instead of failing
+    # login/registration immediately with "database is locked".
+    conn = sqlite3.connect(
+        _SQLITE_PATH,
+        timeout=_SQLITE_TIMEOUT_SECONDS,
+        check_same_thread=False,
+    )
     conn.row_factory = sqlite3.Row
-    try:
-        conn.execute("PRAGMA journal_mode=WAL")
-    except Exception:
-        pass
+    conn.execute(f"PRAGMA busy_timeout = {_SQLITE_TIMEOUT_SECONDS * 1000}")
     return conn
 
 
@@ -111,6 +116,12 @@ def init_db():
     """Create tables if they don't exist. Works for both PostgreSQL and SQLite."""
     conn = get_db()
     cur = _cursor(conn)
+
+    if not _use_postgres:
+        # Set journal mode during initialization only. Running this pragma on
+        # every connection can itself contend for an exclusive lock.
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA synchronous=NORMAL")
 
     if _use_postgres:
         # PostgreSQL DDL
@@ -368,6 +379,33 @@ def create_user(uid: str, name: str, email: str, password: str, role: str) -> di
         conn.commit()
         conn.close()
     return {"id": uid, "name": name, "email": email, "role": role, "avatar": ""}
+
+
+def create_or_get_user(uid: str, name: str, email: str, password: str, role: str) -> dict:
+    """Atomically create a user or return the existing account for that email.
+
+    Google sign-in may retry the same first-login request while multiple
+    browser tabs or network retries are in flight. This makes account
+    provisioning idempotent without weakening normal password registration.
+    """
+    with _db_lock:
+        conn = get_db()
+        try:
+            _execute(
+                conn,
+                f"INSERT INTO users (id, name, email, password, role) VALUES ({_ph(5)}) ON CONFLICT(email) DO NOTHING",
+                (uid, name, email, password, role),
+            )
+            user = _fetchone(conn, f"SELECT * FROM users WHERE email = {_ph()}", (email,))
+            conn.commit()
+            if user is None:
+                raise RuntimeError("Account could not be created or loaded")
+            return user
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
 
 # ═══════════════════════════════════════════

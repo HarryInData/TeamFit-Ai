@@ -2,6 +2,7 @@ import unittest
 import uuid
 import tempfile
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 from pathlib import Path
 
@@ -47,6 +48,18 @@ class ApiSecurityTests(unittest.TestCase):
         headers = {"Authorization": f"Bearer {token}"}
         self.assertEqual(self.client.get("/api/dashboard", headers=headers).status_code, 403)
         self.assertEqual(self.client.get("/api/students", headers=headers).status_code, 403)
+
+    def test_first_google_login_is_safe_when_requests_arrive_together(self):
+        email = f"google-{uuid.uuid4()}@example.test"
+        create = lambda _: database.create_or_get_user(
+            str(uuid.uuid4()), "Google Student", email, "!firebase", "student"
+        )
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            users = list(pool.map(create, range(16)))
+
+        self.assertTrue(all(user["email"] == email for user in users))
+        self.assertEqual(len({user["id"] for user in users}), 1)
+        self.assertEqual(len({user["role"] for user in users}), 1)
 
     def test_execution_fails_closed_without_isolated_runner(self):
         user = {"id": "student-1", "name": "Sandbox Tester", "email": "sandbox@example.test", "role": "student"}
